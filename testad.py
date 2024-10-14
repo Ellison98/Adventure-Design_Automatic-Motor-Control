@@ -20,15 +20,15 @@ pca = PCA9685(i2c, address=0x40)  # PCA9685의 I2C 주소는 0x40
 pca.frequency = 50  # 서보 모터를 위해 50Hz로 설정
 
 # 모터 각도 및 속도 초기화
-angle = 90       # 서보 모터 초기 각도
-offset = -12     # 서보 모터 보정 값
-speed = 6020     # 스로틀 초기 속도
-d_speed = 5950   # 기본 속도
-c_speed = 5950   # 센터 속도
-s_speed = 5950   # 서보 속도
+angle = 0x5A       # 서보 모터 초기 각도 (90)
+offset = 0xFFFFFFF4 # 서보 모터 보정 값 (-12)
+speed = 0x1774     # 스로틀 초기 속도 (6020)
+d_speed = 0x1732   # 기본 속도 (5950)
+c_speed = 0x1732   # 센터 속도 (5950)
+s_speed = 0x1732   # 서보 속도 (5950)
 back_speed = speed
-st = 0           # 상태 플래그
-last = {}        # 마지막 데이터 저장용
+st = 0x0           # 상태 플래그 (0)
+last = {}          # 마지막 데이터 저장용
 
 # 서보 각도를 듀티 사이클로 변환하는 클래스
 class servo_calc:
