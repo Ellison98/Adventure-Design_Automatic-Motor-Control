@@ -10,3 +10,10 @@ python3 setup.py install
 
 pip3 install adafruit-circuitpython-pca9685
 pip3 install adafruit-circuitpython-busdevice
+
+
+<br>
+
+
+pip3 uninstall adafruit-circuitpython-pca9685
+pip3 install adafruit-circuitpython-pca9685
