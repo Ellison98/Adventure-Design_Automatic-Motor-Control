@@ -20,11 +20,15 @@ pca = PCA9685(i2c, address=0x40)  # PCA9685의 I2C 주소는 0x40
 pca.frequency = 50  # 서보 모터를 위해 50Hz로 설정
 
 # 모터 각도 및 속도 초기화
-angle = 90       # 서보 모터 초기 각도
-offset = -12     # 서보 모터 보정 값
-speed = 6020     # 스로틀 초기 속도
-d_speed = 5950   # 기본 속도
+angle = 0x5A       # 서보 모터 초기 각도 (90)
+offset = 0xFFFFFFF4 # 서보 모터 보정 값 (-12)
+speed = 0x1774     # 스로틀 초기 속도 (6020)
+d_speed = 0x1732   # 기본 속도 (5950)
+c_speed = 0x1732   # 센터 속도 (5950)
+s_speed = 0x1732   # 서보 속도 (5950)
 back_speed = speed
+st = 0x0           # 상태 플래그 (0)
+last = {}          # 마지막 데이터 저장용
 
 # 서보 각도를 듀티 사이클로 변환하는 클래스
 class servo_calc:
@@ -52,18 +56,6 @@ def load_data():
         print(f"데이터 읽기 오류: {e}")
         return {}  # 오류 발생 시 빈 딕셔너리 반환
 
-# 서보 각도를 안전하게 설정하는 함수
-def set_servo_angle(angle):
-    global back_speed
-    # 각도 제한
-    angle = max(0, min(180, angle))
-    calc_angle = angle + offset
-    calc_angle = max(0, min(180, calc_angle))
-    
-    # 모터에 각도 적용
-    pca.channels[servo_pin].duty_cycle = servo_angle(calc_angle)
-    return angle
-
 # 서보 각도 계산기 초기화
 servo_angle = servo_calc()
 
@@ -71,7 +63,7 @@ servo_angle = servo_calc()
 while True:
     try:
         data_dict = load_data()  # 시리얼에서 데이터를 읽어옴
-        
+
         # 데이터 길이 체크
         if len(data_dict) < 3:
             print("데이터가 충분하지 않습니다:", data_dict)
@@ -89,8 +81,14 @@ while True:
             angle = 90
             speed = 5930  # 정지 속도
 
-        # 서보 각도 설정
-        angle = set_servo_angle(angle)
+        # 서보 모터 각도 범위 설정
+        angle = 180 if angle > 180 else (0 if angle < 0 else angle)
+        calc_angle = angle + offset
+        calc_angle = 180 if calc_angle > 180 else (0 if calc_angle < 0 else calc_angle)
+
+        # 모터에 각도와 속도 적용
+        print(data_dict, angle, speed, calc_angle, st)
+        pca.channels[servo_pin].duty_cycle = servo_angle(calc_angle)
 
         # 스로틀에 설정된 속도 적용
         if back_speed != speed:
@@ -102,7 +100,9 @@ while True:
 
 # 종료 시 서보 및 스로틀 초기화
 pca.channels[throttle_pin].duty_cycle = 5930  # 스로틀 중지
-calc_angle = set_servo_angle(90)  # 서보 모터 중앙 위치로 초기화
+calc_angle = 90 + offset
+calc_angle = 180 if calc_angle > 180 else (0 if calc_angle < 0 else calc_angle)
+pca.channels[servo_pin].duty_cycle = servo_angle(90)  # 서보 모터 중앙 위치로 초기화
 
 time.sleep(1.2)
 pca.channels[throttle_pin].duty_cycle = 6020  # 스로틀 초기화
