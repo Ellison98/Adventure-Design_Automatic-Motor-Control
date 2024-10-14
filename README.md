@@ -17,3 +17,17 @@ pip3 install adafruit-circuitpython-busdevice
 
 pip3 uninstall adafruit-circuitpython-pca9685
 pip3 install adafruit-circuitpython-pca9685
+
+
+
+<br>
+
+```python
+def load_data():
+    data = arduino.readline()
+    print(f"Received data: {data}")  # 추가된 디버깅 출력
+```
+
+<br>
+
+print(data_dict)  # 데이터 확인
