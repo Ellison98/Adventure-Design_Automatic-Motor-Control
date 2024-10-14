@@ -31,3 +31,23 @@ def load_data():
 <br>
 
 print(data_dict)  # 데이터 확인
+
+
+<br>
+
+```python
+def load_data():
+    data = arduino.readline()  # 바이트 배열로 읽기
+    try:
+        data = data.decode('utf-8').strip()  # UTF-8로 디코딩
+    except UnicodeDecodeError:
+        print("Failed to decode data. Raw bytes:", data)  # 디코딩 실패 시 원본 바이트 출력
+        return {}
+
+    if not data:  # 만약 데이터가 비어있다면
+        return {}
+
+    data = data.split(' ')  # 공백으로 분할
+    data = [for_a.split(':') for for_a in data if ':' in for_a]  # ':'이 포함된 항목만 처리
+    return {for_a[0]: int(for_a[1]) for for_a in data if len(for_a) == 2}  # 딕셔너리 반환
+```
