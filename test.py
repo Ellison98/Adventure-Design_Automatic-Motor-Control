@@ -74,6 +74,7 @@ while True:
         # 데이터 길이 체크
         if len(data_dict) < 3:
             print("데이터가 충분하지 않습니다:", data_dict)
+            time.sleep(0.1)  # 잠시 대기 후 반복
             continue  # 데이터가 부족할 경우 다음 루프 실행
 
         # 센서 데이터에 따라 모터 각도와 속도 제어
