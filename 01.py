@@ -48,17 +48,29 @@ def read_controller_data():
         arduino.write(b'R')  # 조종기 데이터 요청 (예시)
         line = arduino.readline().decode('utf-8').strip()
         print(f"조종기 데이터: {line}")  # 디버깅 출력
-        data = line.split(',')
-        return {
-            'angle': int(data[0]),  # 조종기에서 받은 각도 값
-            'speed': int(data[1])   # 조종기에서 받은 속도 값
-        }
+
+        # 데이터를 파싱하는 부분 수정
+        if "Throttle Motor Speed:" in line and "Throttle Duration (HIGH):" in line:
+            # 각도 및 속도를 정규 표현식으로 추출
+            throttle_speed = int(line.split("Throttle Motor Speed:")[1].split()[0])
+            angle = 90  # 각도는 예시로 90도로 설정
+            return {
+                'angle': angle,  # 기본 각도 값 (원하는 값으로 변경 가능)
+                'speed': throttle_speed  # 조종기로부터 받은 속도 값
+            }
+        else:
+            print("조종기 데이터 형식이 올바르지 않습니다.")
+            return {
+                'angle': 90,  # 기본 각도 값
+                'speed': 50    # 기본 속도 값
+            }
     except Exception as e:
         print(f"조종기 데이터 읽기 오류: {e}")
         return {
             'angle': 90,  # 기본 각도 값
             'speed': 50    # 기본 속도 값
         }
+
 
 # 모터를 제어하는 함수
 def control_motor(angle, speed):
