@@ -58,7 +58,7 @@ def read_controller_data():
             'speed': 50   # 기본 속도 값
         }
 
-# 모터를 제어하는 함수 (예시)
+# 모터를 제어하는 함수
 def control_motor(angle, speed):
     # 모터 제어 로직을 구현합니다.
     print(f"모터 각도: {angle}, 속도: {speed}")
@@ -97,25 +97,11 @@ while True:
         print(f"오류 발생: {e}")
         break
 
-# 테스트: 서보 모터 각도 변경
-pca.channels[servo_pin].duty_cycle = servo_angle(90)  # 중앙으로 이동
-time.sleep(1)
-pca.channels[servo_pin].duty_cycle = servo_angle(45)  # 45도 이동
-time.sleep(1)
-pca.channels[servo_pin].duty_cycle = servo_angle(135)  # 135도 이동
-time.sleep(1)
+# 종료 시 서보 및 스로틀 초기화
+pca.channels[throttle_pin].duty_cycle = 5930  # 스로틀 중지
+calc_angle = 90 + offset
+calc_angle = 180 if calc_angle > 180 else (0 if calc_angle < 0 else calc_angle)
+pca.channels[servo_pin].duty_cycle = servo_angle(90)  # 서보 모터 중앙 위치로 초기화
 
-# 테스트: 스로틀 모터 속도 변경
-pca.channels[throttle_pin].duty_cycle = 5930  # 전진
-time.sleep(1)
-pca.channels[throttle_pin].duty_cycle = 6020  # 정지
-
-
-# # 종료 시 서보 및 스로틀 초기화
-# pca.channels[throttle_pin].duty_cycle = 5930  # 스로틀 중지
-# calc_angle = 90 + offset
-# calc_angle = 180 if calc_angle > 180 else (0 if calc_angle < 0 else calc_angle)
-# pca.channels[servo_pin].duty_cycle = servo_angle(90)  # 서보 모터 중앙 위치로 초기화
-
-# time.sleep(1.2)
-# pca.channels[throttle_pin].duty_cycle = 6020  # 스로틀 초기화
+time.sleep(1.2)
+pca.channels[throttle_pin].duty_cycle = 6020  # 스로틀 초기화
