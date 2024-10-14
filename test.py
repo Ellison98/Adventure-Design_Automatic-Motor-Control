@@ -32,16 +32,6 @@ class servo_calc:
     def __call__(self, angle):
         return self.min_duty + int((angle / 180) * self.duty_range)
 
-# 데이터 수신 함수
-def load_data():
-    data = arduino.readline()
-    try:
-        data = data.decode('ascii').split(' ')
-        data = [for_a.split(':') for for_a in data]
-        return {for_a[0]: int(for_a[1].replace('\r\n', '')) for for_a in data}
-    except:
-        return {}
-
 # 조종기에서 데이터를 읽어오는 함수
 def read_controller_data():
     try:
@@ -49,10 +39,17 @@ def read_controller_data():
         arduino.write(b'R')  # 조종기 데이터 요청 (예시)
         line = arduino.readline().decode('utf-8').strip()
         print(f"조종기 데이터: {line}")  # 디버깅 출력
-        data = line.split(',')
+
+        # 데이터를 " | "로 나눔
+        data_parts = line.split(' | ')
+
+        # 스로틀과 스티어링 모터 값을 추출
+        throttle_value = int(data_parts[0].split(': ')[1])  # 'Throttle Duration (HIGH): 1405'
+        steering_value = int(data_parts[1].split(': ')[1])  # 'Steering Motor Speed: 126'
+
         return {
-            'angle': int(data[0]),  # 조종기에서 받은 각도 값
-            'speed': int(data[1])   # 조종기에서 받은 속도 값
+            'angle': steering_value,  # 스티어링 값으로 각도 설정
+            'speed': throttle_value   # 스로틀 값으로 속도 설정
         }
     except Exception as e:
         print(f"조종기 데이터 읽기 오류: {e}")
