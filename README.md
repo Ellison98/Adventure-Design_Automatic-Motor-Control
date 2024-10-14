@@ -88,6 +88,22 @@ void loop() {
 
   delay(100);  // 100ms 지연
 }
+```
 
+<br>
 
+```python
+void loop() {
+    int sensorValue0 = analogRead(A0); // 예시: 센서 값 읽기
+    int sensorValue1 = analogRead(A1);
+    int sensorValue2 = analogRead(A2);
+    
+    Serial.print("0:");
+    Serial.print(sensorValue0);
+    Serial.print(" 1:");
+    Serial.print(sensorValue1);
+    Serial.print(" 2:");
+    Serial.println(sensorValue2); // 마지막에 println() 사용하여 줄바꿈
+    delay(100); // 데이터 전송 주기
+}
 ```
