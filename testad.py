@@ -42,10 +42,19 @@ class servo_calc:
 
 # 시리얼 통신으로 데이터 읽기 함수
 def load_data():
-    data = arduino.readline()  # 시리얼에서 한 줄 읽기
-    data = data.decode('ascii').split(' ')  # 아스키 형식으로 디코딩하고 공백으로 분할
-    data = [for_a.split(':') for for_a in data]  # ':'을 기준으로 키-값 분할
-    return {for_a[0]: int(for_a[1].replace('\r\n', '')) for for_a in data}  # 딕셔너리로 반환
+    try:
+        data = arduino.readline()  # 시리얼에서 한 줄 읽기
+        data = data.decode('ascii').strip()  # 아스키 형식으로 디코딩하고 양쪽 공백 제거
+        data = data.split(' ')  # 공백으로 분할
+        data_dict = {}
+        for for_a in data:
+            if ':' in for_a:  # ':'가 포함된 경우만 처리
+                key, value = for_a.split(':')
+                data_dict[key] = int(value.replace('\r\n', ''))  # 딕셔너리로 반환
+        return data_dict
+    except Exception as e:
+        print(f"데이터 읽기 오류: {e}")
+        return {}  # 오류 발생 시 빈 딕셔너리 반환
 
 # 서보 각도 계산기 초기화
 servo_angle = servo_calc()
@@ -53,17 +62,18 @@ servo_angle = servo_calc()
 # 메인 루프: 센서 데이터를 기반으로 서보 및 스로틀 제어
 while True:
     try:
-        if last != {}:
-            data_dict = last
-            last = {}
-        else:
-            data_dict = load_data()  # 시리얼에서 데이터를 읽어옴
+        data_dict = load_data()  # 시리얼에서 데이터를 읽어옴
+
+        # 데이터 길이 체크
+        if len(data_dict) < 3:
+            print("데이터가 충분하지 않습니다:", data_dict)
+            continue  # 데이터가 부족할 경우 다음 루프 실행
 
         # 센서 데이터에 따라 모터 각도와 속도 제어
-        if data_dict['0'] < 200:  # 조종기를 밀었을 때
+        if data_dict.get('0', 0) < 200:  # 조종기를 밀었을 때
             angle = 105  # 오른쪽으로 회전
             speed = d_speed  # 전진 속도
-        elif data_dict['0'] > 200:  # 조종기를 당겼을 때
+        elif data_dict.get('0', 0) > 200:  # 조종기를 당겼을 때
             angle = 75  # 왼쪽으로 회전
             speed = d_speed  # 후진 속도
         else:
