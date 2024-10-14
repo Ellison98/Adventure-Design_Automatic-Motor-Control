@@ -81,7 +81,7 @@ while True:
             data_dict = load_data()  # 시리얼에서 데이터를 읽어옴
 
         # 센서 데이터에 따라 모터 각도와 속도 제어
-        if data_dict['0'] < 200 and data_dict['1'] < 200 and data_dict['2'] < 200:
+        if data_dict['0'] < 2000 and data_dict['1'] < 2000 and data_dict['2'] < 2000:
             # 000: 장애물 없음
             if angle < 90:
                 if angle < 75:
@@ -94,40 +94,40 @@ while True:
                 else:
                     angle += 1
             speed = d_speed
-        elif data_dict['0'] > 200 and data_dict['1'] < 200 and data_dict['2'] > 200:
+        elif data_dict['0'] > 2000 and data_dict['1'] < 2000 and data_dict['2'] > 2000:
             # 101: 특별한 동작 없음
             pass
-        elif data_dict['0'] < 200 and data_dict['1'] > 200 and data_dict['2'] < 200:
+        elif data_dict['0'] < 2000 and data_dict['1'] > 2000 and data_dict['2'] < 2000:
             # 010: 정면에 장애물, 직진
             angle = 90
             if st == 0:
                 speed = s_speed
                 st = 1
-        elif data_dict['0'] < 200 and data_dict['1'] < 200 and data_dict['2'] > 200:
+        elif data_dict['0'] < 2000 and data_dict['1'] < 2000 and data_dict['2'] > 2000:
             # 001: 오른쪽 회전
             angle = 105
             speed = s_speed
-        elif data_dict['0'] < 200 and data_dict['1'] > 200 and data_dict['2'] > 200:
+        elif data_dict['0'] < 2000 and data_dict['1'] > 2000 and data_dict['2'] > 2000:
             # 011: 오른쪽 약간 회전
             angle = 95
             speed = s_speed
-        elif data_dict['0'] > 200 and data_dict['1'] < 200 and data_dict['2'] < 200:
+        elif data_dict['0'] > 2000 and data_dict['1'] < 2000 and data_dict['2'] < 2000:
             # 100: 왼쪽 회전
             angle = 75
             speed = s_speed
-        elif data_dict['0'] > 200 and data_dict['1'] > 200 and data_dict['2'] < 200:
+        elif data_dict['0'] > 2000 and data_dict['1'] > 2000 and data_dict['2'] < 2000:
             # 110: 왼쪽 약간 회전
             angle = 85
             speed = s_speed
-        elif data_dict['0'] > 200 and data_dict['1'] > 200 and data_dict['2'] > 200:
+        elif data_dict['0'] > 2000 and data_dict['1'] > 2000 and data_dict['2'] > 2000:
             # 111: 멈춤
             if st == 1:
                 break_true = 0
                 for for_a in range(0, 20):
                     data_dict = load_data()
-                    if data_dict['0'] < 200 and data_dict['1'] > 200 and data_dict['2'] < 200:
+                    if data_dict['0'] < 2000 and data_dict['1'] > 2000 and data_dict['2'] < 2000:
                         pass
-                    elif data_dict['0'] < 200 and data_dict['1'] < 200 and data_dict['2'] < 200:
+                    elif data_dict['0'] < 2000 and data_dict['1'] < 2000 and data_dict['2'] < 2000:
                         break
                     else:
                         last = data_dict
@@ -136,6 +136,7 @@ while True:
 
                 if break_true == 1:
                     break
+
 
         # 서보 모터 각도 범위 설정
         angle = 180 if angle > 180 else (0 if angle < 0 else angle)
