@@ -31,16 +31,6 @@ class ServoCalc:
     def __call__(self, angle):
         return self.min_duty + int((angle / 180) * self.duty_range)
 
-# 데이터 수신 함수
-def load_data():
-    data = arduino.readline()
-    try:
-        data = data.decode('ascii').split(' ')
-        data = [for_a.split(':') for for_a in data]
-        return {for_a[0]: int(for_a[1].replace('\r\n', '')) for for_a in data}
-    except:
-        return {}
-
 # 조종기에서 데이터를 읽어오는 함수
 def read_controller_data():
     try:
@@ -48,37 +38,47 @@ def read_controller_data():
         line = arduino.readline().decode('utf-8').strip()
         print(f"조종기 데이터: {line}")  # 디버깅 출력
 
-        # 데이터를 파싱하는 부분 수정
         if "Throttle Motor Speed:" in line and "Throttle Duration (HIGH):" in line:
             throttle_speed = int(line.split("Throttle Motor Speed:")[1].split()[0])
-            angle = 0x5A  # 각도는 예시로 90도로 설정 (90)
+            direction = line.split("Throttle Direction:")[1].strip()  # 방향을 가져옵니다.
+            
+            # 각도 설정 (왼쪽, 중간, 오른쪽)
+            if direction == "LEFT":
+                angle = 0  # 왼쪽
+            elif direction == "RIGHT":
+                angle = 180  # 오른쪽
+            else:
+                angle = 90  # 중앙 (직진)
+
             return {
-                'angle': angle,  # 기본 각도 값
-                'speed': throttle_speed  # 조종기로부터 받은 속도 값
+                'angle': angle,
+                'speed': throttle_speed
             }
         else:
             print("조종기 데이터 형식이 올바르지 않습니다.")
             return {
-                'angle': 0x5A,  # 기본 각도 값 (90)
-                'speed': 0x32   # 기본 속도 값 (50)
+                'angle': 90,  # 기본 각도 값
+                'speed': 0    # 기본 속도 값
             }
     except Exception as e:
         print(f"조종기 데이터 읽기 오류: {e}")
         return {
-            'angle': 0x5A,  # 기본 각도 값 (90)
-            'speed': 0x32   # 기본 속도 값 (50)
+            'angle': 90,  # 기본 각도 값
+            'speed': 0    # 기본 속도 값
         }
 
 # 모터를 제어하는 함수
 def control_motor(angle, speed):
-    # 각도와 속도를 제어하는 로직
     print(f"모터 각도 (16진수): {hex(angle)}, 속도 (16진수): {hex(speed)}")
-    
-    # 서보 각도 설정
     pca.channels[servo_pin].duty_cycle = servo_angle(angle)
     
     # 스로틀 속도 설정
-    pca.channels[throttle_pin].duty_cycle = speed
+    if speed > 0:  # 전진
+        pca.channels[throttle_pin].duty_cycle = speed
+    elif speed < 0:  # 후진
+        pca.channels[throttle_pin].duty_cycle = -speed  # 후진 속도는 음수 처리
+    else:  # 정지
+        pca.channels[throttle_pin].duty_cycle = 0
 
 # 서보 각도 계산기 초기화
 servo_angle = ServoCalc()
@@ -86,29 +86,21 @@ servo_angle = ServoCalc()
 # 메인 루프: 조종기 데이터를 기반으로 서보 및 스로틀 제어
 while True:
     try:
-        # 조종기에서 데이터를 읽어옴
         controller_data = read_controller_data()
         
-        # 조종기 데이터에 따라 모터 각도와 속도 제어
         angle = controller_data['angle']
         speed = controller_data['speed']
         
         # 각도 제어: 0에서 180도 사이의 범위로 제한
-        if angle < 0:
-            angle = 0
-        elif angle > 180:
-            angle = 180
+        angle = max(0, min(angle, 180))
         
         # 속도 제어: 최소 및 최대 속도 제한
-        if speed < min_speed:
-            speed = min_speed
-        elif speed > max_speed:
-            speed = max_speed
+        speed = max(min_speed, min(speed, max_speed))
         
         # 모터 제어 함수 호출
         control_motor(angle, speed)
 
-        # 속도에 따라 모터 동작 조절
+        # 모터 작동 상태 출력
         if speed > 0:
             print("모터가 작동 중입니다.")
         else:
@@ -120,7 +112,7 @@ while True:
 
 # 종료 시 서보 및 스로틀 초기화
 pca.channels[throttle_pin].duty_cycle = 0  # 스로틀 중지
-pca.channels[servo_pin].duty_cycle = servo_angle(0x5A)  # 서보 모터 중앙 위치로 초기화
+pca.channels[servo_pin].duty_cycle = servo_angle(90)  # 서보 모터 중앙 위치로 초기화
 time.sleep(1.2)
 
 # 스로틀 초기화
