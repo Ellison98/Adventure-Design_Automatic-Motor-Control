@@ -33,21 +33,27 @@ def set_throttle_speed(speed):
 try:
     while True:
         if arduino.in_waiting > 0:
-            data = arduino.readline().decode('utf-8').strip()  # 조종기 값 읽기
-            pairs = data.split(',')  # 데이터 분리 (예: "0:256,1:258")
-            
-            for pair in pairs:
-                key_value = pair.split(':')
-                if len(key_value) == 2:
-                    key = int(key_value[0].strip())  # 키 (0 또는 1)
-                    value = int(key_value[1].strip())  # 값 (256 또는 258)
+            try:
+                data = arduino.readline().decode('utf-8').strip()  # 조종기 값 읽기
+                pairs = data.split()  # 데이터 분리 (예: "0:256 1:258 2:257")
 
-                    if key == 0:  # 서보 모터 각도
-                        angle = value + offset  # 보정된 각도
-                        set_servo_angle(angle)
-                    elif key == 1:  # 스로틀 속도
-                        speed = value  # 스로틀 속도
-                        set_throttle_speed(speed)
+                for pair in pairs:
+                    key_value = pair.split(':')
+                    if len(key_value) == 2:
+                        key = int(key_value[0].strip())  # 키 (0, 1, 또는 2)
+                        value = int(key_value[1].strip())  # 값 (256, 258, 또는 257)
+
+                        if key == 0:  # 서보 모터 각도
+                            angle = value + offset  # 보정된 각도
+                            set_servo_angle(angle)
+                        elif key == 1:  # 스로틀 속도
+                            speed = value  # 스로틀 속도
+                            set_throttle_speed(speed)
+                        elif key == 2:  # 추가적인 값 처리
+                            print(f"추가 값: {value}")  # 추가 값 출력 (필요 시 사용)
+
+            except Exception as e:
+                print(f"데이터 읽기 오류: {e}")
 
             time.sleep(0.1)  # 루프 주기 조정
 
