@@ -7,7 +7,7 @@ import time
 
 # 서보 모터 핀 및 스로틀 핀 설정
 servo_pin = 0          # PCA9685의 채널 0번: 서보 모터 제어
-throttle_pin = 15       # PCA9685의 채널 15번: 스로틀 제어
+throttle_pin = 15      # PCA9685의 채널 15번: 스로틀 제어
 
 # 시리얼 통신 설정
 arduino = serial.Serial('/dev/ttyACM1', 9600, timeout=1)
@@ -17,7 +17,7 @@ data_dict = {}
 # I2C 및 PCA9685 설정
 i2c = busio.I2C(SCL, SDA)
 pca = PCA9685(i2c, address=0x40)  # PCA9685의 I2C 주소는 0x40
-pca.frequency = 62.5  # 주파수 설정 (62.5Hz)
+pca.frequency = 50  # 서보 모터를 위해 50Hz로 설정
 
 # 모터 각도 및 속도 초기화
 angle = 90       # 서보 모터 초기 각도
@@ -60,61 +60,16 @@ while True:
             data_dict = load_data()  # 시리얼에서 데이터를 읽어옴
 
         # 센서 데이터에 따라 모터 각도와 속도 제어
-        if data_dict['0'] < 200 and data_dict['1'] < 200 and data_dict['2'] < 200:
-            # 000: 장애물 없음
-            if angle < 90:
-                if angle < 75:
-                    angle = 45
-                else:
-                    angle -= 1
-            else:
-                if angle > 105:
-                    angle = 135
-                else:
-                    angle += 1
-            speed = d_speed
-        elif data_dict['0'] > 200 and data_dict['1'] < 200 and data_dict['2'] > 200:
-            # 101: 특별한 동작 없음
-            pass
-        elif data_dict['0'] < 200 and data_dict['1'] > 200 and data_dict['2'] < 200:
-            # 010: 정면에 장애물, 직진
+        if data_dict['0'] < 200:  # 조종기를 밀었을 때
+            angle = 105  # 오른쪽으로 회전
+            speed = d_speed  # 전진 속도
+        elif data_dict['0'] > 200:  # 조종기를 당겼을 때
+            angle = 75  # 왼쪽으로 회전
+            speed = d_speed  # 후진 속도
+        else:
+            # 기본 정지 동작
             angle = 90
-            if st == 0:
-                speed = s_speed
-                st = 1
-        elif data_dict['0'] < 200 and data_dict['1'] < 200 and data_dict['2'] > 200:
-            # 001: 오른쪽 회전
-            angle = 105
-            speed = s_speed
-        elif data_dict['0'] < 200 and data_dict['1'] > 200 and data_dict['2'] > 200:
-            # 011: 오른쪽 약간 회전
-            angle = 95
-            speed = s_speed
-        elif data_dict['0'] > 200 and data_dict['1'] < 200 and data_dict['2'] < 200:
-            # 100: 왼쪽 회전
-            angle = 75
-            speed = s_speed
-        elif data_dict['0'] > 200 and data_dict['1'] > 200 and data_dict['2'] < 200:
-            # 110: 왼쪽 약간 회전
-            angle = 85
-            speed = s_speed
-        elif data_dict['0'] > 200 and data_dict['1'] > 200 and data_dict['2'] > 200:
-            # 111: 멈춤
-            if st == 1:
-                break_true = 0
-                for for_a in range(0, 20):
-                    data_dict = load_data()
-                    if data_dict['0'] < 200 and data_dict['1'] > 200 and data_dict['2'] < 200:
-                        pass
-                    elif data_dict['0'] < 200 and data_dict['1'] < 200 and data_dict['2'] < 200:
-                        break
-                    else:
-                        last = data_dict
-                else:
-                    break_true = 1
-
-                if break_true == 1:
-                    break
+            speed = 5930  # 정지 속도
 
         # 서보 모터 각도 범위 설정
         angle = 180 if angle > 180 else (0 if angle < 0 else angle)
@@ -124,11 +79,14 @@ while True:
         # 모터에 각도와 속도 적용
         print(data_dict, angle, speed, calc_angle, st)
         pca.channels[servo_pin].duty_cycle = servo_angle(calc_angle)
-        if back_speed != speed and st == 1:
+
+        # 스로틀에 설정된 속도 적용
+        if back_speed != speed:
             back_speed = speed
             pca.channels[throttle_pin].duty_cycle = speed
+
     except Exception as e:
-        print(e)
+        print(f"오류 발생: {e}")
 
 # 종료 시 서보 및 스로틀 초기화
 pca.channels[throttle_pin].duty_cycle = 5930  # 스로틀 중지
