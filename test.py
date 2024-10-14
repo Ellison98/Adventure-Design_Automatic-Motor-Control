@@ -1,12 +1,12 @@
+import time
+import serial
 import busio
 from board import SCL, SDA
 from adafruit_pca9685 import PCA9685
-import serial
-import time
 
 # 서보 및 스로틀 핀 설정
 servo_pin = 0
-throttle_pin = 15
+throttle_pin = 1
 
 # 시리얼 통신 설정
 arduino = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
@@ -42,57 +42,69 @@ def load_data():
     except:
         return {}
 
+# 조종기에서 데이터를 읽어오는 함수
+def read_controller_data():
+    try:
+        # 시리얼 포트에서 데이터 읽기
+        arduino.write(b'R')  # 조종기 데이터 요청 (예시)
+        line = arduino.readline().decode('utf-8').strip()
+        print(f"조종기 데이터: {line}")  # 디버깅 출력
+        data = line.split(',')
+        return {
+            'angle': int(data[0]),  # 조종기에서 받은 각도 값
+            'speed': int(data[1])   # 조종기에서 받은 속도 값
+        }
+    except Exception as e:
+        print(f"조종기 데이터 읽기 오류: {e}")
+        return {
+            'angle': 90,  # 기본 각도 값
+            'speed': 50   # 기본 속도 값
+        }
+
+# 모터를 제어하는 함수 (예시)
+def control_motor(angle, speed):
+    # 모터 제어 로직을 구현합니다.
+    print(f"모터 각도: {angle}, 속도: {speed}")
+    pca.channels[servo_pin].duty_cycle = servo_angle(angle)
+    pca.channels[throttle_pin].duty_cycle = speed
+
+# 서보 각도 계산기 초기화
 servo_angle = servo_calc()
 
+# 메인 루프: 조종기 데이터를 기반으로 서보 및 스로틀 제어
 while True:
     try:
-        # 조종기에서 데이터 수신
-        data_dict = load_data()
-
-        # 스로틀 값과 서보 모터 값 확인
-        if '1' in data_dict and '2' in data_dict:
-            throttle_value = data_dict['1']  # 스로틀 값 (1번 값)
-            servo_input = data_dict['2']  # 서보 모터 입력 값 (2번 값, 100~200)
-
-            print(f"Throttle value: {throttle_value}, Servo input: {servo_input}")
-
-            # 스로틀 값에 따른 속도 세밀 제어 (900 ~ 1700)
-            if 900 <= throttle_value <= 1700:
-                speed = 6020 - int((throttle_value - 900) * 5)  # 속도 조정
-            else:
-                speed = 6020  # 멈추는 속도
-
-            # 서보 모터 값이 100~200 사이일 때 각도 변환 (0도 ~ 180도)
-            if 100 <= servo_input <= 200:
-                angle = (servo_input - 100) * 1.8  # 100~200을 0도~180도로 변환
-
-            # 보정값 자동 설정 (예: 특정 각도 범위에서 자동 조정)
-            if angle < 60 or angle > 120:
-                offset = -8  # 각도가 많이 틀어졌을 때 보정
-            else:
-                offset = -12  # 기본 보정값
-
-            # 속도 및 각도 적용
-            if back_speed != speed:
-                back_speed = speed
-                pca.channels[throttle_pin].duty_cycle = speed
-
-            calc_angle = angle + offset
-            calc_angle = 180 if calc_angle > 180 else (0 if calc_angle < 0 else calc_angle)
-            pca.channels[servo_pin].duty_cycle = servo_angle(calc_angle)
-
-            print(f"Angle: {calc_angle}, Speed: {speed}")
-        else:
-            print("Throttle or servo input not received.")
-
+        # 조종기에서 데이터를 읽어옴
+        controller_data = read_controller_data()
+        
+        # 조종기 데이터에 따라 모터 각도와 속도 제어
+        angle = controller_data['angle']
+        speed = controller_data['speed']
+        
+        # 모터 제어 로직 (예시)
+        if angle < 75:
+            angle = 45
+        elif angle > 105:
+            angle = 135
+        
+        # 속도 제어 로직 (예시)
+        if speed < 20:
+            speed = 20
+        elif speed > 100:
+            speed = 100
+        
+        # 모터 제어 함수 호출
+        control_motor(angle, speed)
+        
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"오류 발생: {e}")
+        break
 
-# 종료 시 서보와 모터 초기화
-pca.channels[throttle_pin].duty_cycle = 5930
+# 종료 시 서보 및 스로틀 초기화
+pca.channels[throttle_pin].duty_cycle = 5930  # 스로틀 중지
 calc_angle = 90 + offset
 calc_angle = 180 if calc_angle > 180 else (0 if calc_angle < 0 else calc_angle)
-pca.channels[servo_pin].duty_cycle = servo_angle(90)
+pca.channels[servo_pin].duty_cycle = servo_angle(90)  # 서보 모터 중앙 위치로 초기화
 
 time.sleep(1.2)
-pca.channels[throttle_pin].duty_cycle = 6020
+pca.channels[throttle_pin].duty_cycle = 6020  # 스로틀 초기화
