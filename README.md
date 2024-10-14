@@ -52,27 +52,42 @@ void setup() {
 }
 
 void loop() {
-    data_dict = load_data();  // 시리얼에서 데이터를 읽어옴
+  // 스티어링의 HIGH 신호 지속 시간 측정
+  steer_duration = pulseIn(steer, HIGH);
+  
+  // 쓰로틀의 HIGH 신호 지속 시간 측정
+  throttle_duration = pulseIn(throttle, HIGH);
 
-    // 조종기 값 읽기
-    int joystick_x_value = data_dict.get('0', 0); // 기본값 0
-    int joystick_y_value = data_dict.get('1', 0); // 기본값 0
+  // HIGH 신호의 지속 시간이 1000ms 이상인 경우에만 처리
+  if (steer_duration > 0 && throttle_duration > 0) {
+    // 스티어링 및 쓰로틀 값을 0~255 범위의 PWM 값으로 변환
+    int motorSpeed1 = map(throttle_duration, 1000, 2000, 0, 255);  // 쓰로틀을 모터 속도로 변환
+    int motorSpeed2 = map(steer_duration, 1000, 2000, 0, 255);     // 스티어링을 모터 속도로 변환
 
-    // 조종기 값을 PWM 신호로 변환
-    int motor_speed_x = map(joystick_x_value, 900, 1700, 0, 255);
-    int motor_speed_y = map(joystick_y_value, 900, 1700, 0, 255);
+    // 속도를 범위 내로 제한
+    motorSpeed1 = constrain(motorSpeed1, 0, 255);
+    motorSpeed2 = constrain(motorSpeed2, 0, 255);
 
-    // 모터에 PWM 신호 전달
-    analogWrite(motor1Pin, motor_speed_x);
-    analogWrite(motor2Pin, motor_speed_y);
+    // 모터에 PWM 신호 전달 (속도 제어)
+    analogWrite(motor1Pin, motorSpeed1);
+    analogWrite(motor2Pin, motorSpeed2);
 
-    // 디버깅 로그
-    Serial.print("X Speed: ");
-    Serial.println(motor_speed_x);
-    Serial.print("Y Speed: ");
-    Serial.println(motor_speed_y);
+    // 시리얼 모니터에 스티어링, 쓰로틀의 PWM 값 및 변환된 모터 속도 출력
+    Serial.print("Steering Duration (HIGH): ");
+    Serial.print(steer_duration);
+    Serial.print(" | Steering Motor Speed: ");
+    Serial.println(motorSpeed2);
 
-    delay(100);  // 간단한 지연
+    Serial.print("Throttle Duration (HIGH): ");
+    Serial.print(throttle_duration);
+    Serial.print(" | Throttle Motor Speed: ");
+    Serial.println(motorSpeed1);
+  } else {
+    Serial.println("No valid signal detected.");
+  }
+
+  delay(100);  // 100ms 지연
 }
+
 
 ```
