@@ -14,18 +14,18 @@ arduino = serial.Serial('/dev/ttyACM1', 9600, timeout=1)
 # I2C 통신 및 PCA9685 초기화
 i2c = busio.I2C(SCL, SDA)
 pca = PCA9685(i2c, address=0x40)
-pca.frequency = 62.5
+pca.frequency = 0x3E  # 주파수 설정 (62.5)
 
 # 각도 및 속도 초기화
-offset = -12  # 서보 각도 보정값
-speed = 6020  # 기본 속도
-back_speed = speed  # 현재 속도 저장
+offset = -0xC  # 서보 각도 보정값 (-12)
+max_speed = 0x1774  # 최대 속도 (6020)
+min_speed = 0x0  # 최소 속도 (0)
 
 # 서보 모터 각도 계산 클래스
-class servo_calc:
+class ServoCalc:
     def __init__(self):
-        self.min_duty = int((750 * pca.frequency) / 1000000 * 0xFFFF)
-        max_duty = int((2250 * pca.frequency) / 1000000 * 0xFFFF)
+        self.min_duty = int((0x2EE * pca.frequency) / 0x1000000 * 0xFFFF)  # 750
+        max_duty = int((0x8D2 * pca.frequency) / 0x1000000 * 0xFFFF)  # 2250
         self.duty_range = int(max_duty - self.min_duty)
 
     def __call__(self, angle):
@@ -47,45 +47,41 @@ def read_controller_data():
         arduino.write(b'R')  # 조종기 데이터 요청 (예시)
         line = arduino.readline().decode('utf-8').strip()
         print(f"조종기 데이터: {line}")  # 디버깅 출력
-        
-        # 데이터 파싱 (왼쪽, 중앙, 오른쪽 명령어 확인)
+
+        # 데이터를 파싱하는 부분 수정
         if "Throttle Motor Speed:" in line and "Throttle Duration (HIGH):" in line:
             throttle_speed = int(line.split("Throttle Motor Speed:")[1].split()[0])
-            direction = line.split('|')[0].strip()  # 왼쪽, 중앙, 오른쪽을 포함하는 부분
-            
+            angle = 0x5A  # 각도는 예시로 90도로 설정 (90)
             return {
-                'direction': direction,  # 조종기로부터 받은 방향
-                'speed': throttle_speed   # 조종기로부터 받은 속도 값
+                'angle': angle,  # 기본 각도 값
+                'speed': throttle_speed  # 조종기로부터 받은 속도 값
             }
         else:
             print("조종기 데이터 형식이 올바르지 않습니다.")
             return {
-                'direction': '중앙',  # 기본 방향 값
-                'speed': 50           # 기본 속도 값
+                'angle': 0x5A,  # 기본 각도 값 (90)
+                'speed': 0x32   # 기본 속도 값 (50)
             }
     except Exception as e:
         print(f"조종기 데이터 읽기 오류: {e}")
         return {
-            'direction': '중앙',  # 기본 방향 값
-            'speed': 50           # 기본 속도 값
+            'angle': 0x5A,  # 기본 각도 값 (90)
+            'speed': 0x32   # 기본 속도 값 (50)
         }
 
 # 모터를 제어하는 함수
-def control_motor(direction, speed):
-    # 방향에 따른 서보 모터 위치 결정
-    if direction == "왼쪽":
-        angle = 45  # 왼쪽으로 회전
-    elif direction == "오른쪽":
-        angle = 135  # 오른쪽으로 회전
-    else:
-        angle = 90  # 중앙으로 설정
-
-    print(f"모터 방향: {direction}, 각도: {angle}, 속도: {speed}")
-    pca.channels[servo_pin].duty_cycle = servo_angle(angle)  # 서보 모터 제어
-    pca.channels[throttle_pin].duty_cycle = speed  # 스로틀 속도 제어
+def control_motor(angle, speed):
+    # 각도와 속도를 제어하는 로직
+    print(f"모터 각도 (16진수): {hex(angle)}, 속도 (16진수): {hex(speed)}")
+    
+    # 서보 각도 설정
+    pca.channels[servo_pin].duty_cycle = servo_angle(angle)
+    
+    # 스로틀 속도 설정
+    pca.channels[throttle_pin].duty_cycle = speed
 
 # 서보 각도 계산기 초기화
-servo_angle = servo_calc()
+servo_angle = ServoCalc()
 
 # 메인 루프: 조종기 데이터를 기반으로 서보 및 스로틀 제어
 while True:
@@ -93,20 +89,39 @@ while True:
         # 조종기에서 데이터를 읽어옴
         controller_data = read_controller_data()
         
-        # 조종기 데이터에 따라 모터 방향과 속도 제어
-        direction = controller_data['direction']
+        # 조종기 데이터에 따라 모터 각도와 속도 제어
+        angle = controller_data['angle']
         speed = controller_data['speed']
         
-        # 모터 제어 함수 호출
-        control_motor(direction, speed)
+        # 각도 제어: 0에서 180도 사이의 범위로 제한
+        if angle < 0:
+            angle = 0
+        elif angle > 180:
+            angle = 180
         
+        # 속도 제어: 최소 및 최대 속도 제한
+        if speed < min_speed:
+            speed = min_speed
+        elif speed > max_speed:
+            speed = max_speed
+        
+        # 모터 제어 함수 호출
+        control_motor(angle, speed)
+
+        # 속도에 따라 모터 동작 조절
+        if speed > 0:
+            print("모터가 작동 중입니다.")
+        else:
+            print("모터가 정지했습니다.")
+
     except Exception as e:
         print(f"오류 발생: {e}")
         break
 
 # 종료 시 서보 및 스로틀 초기화
-pca.channels[throttle_pin].duty_cycle = 5930  # 스로틀 중지
-pca.channels[servo_pin].duty_cycle = servo_angle(90)  # 서보 모터 중앙 위치로 초기화
-
+pca.channels[throttle_pin].duty_cycle = 0  # 스로틀 중지
+pca.channels[servo_pin].duty_cycle = servo_angle(0x5A)  # 서보 모터 중앙 위치로 초기화
 time.sleep(1.2)
-pca.channels[throttle_pin].duty_cycle = 6020  # 스로틀 초기화
+
+# 스로틀 초기화
+pca.channels[throttle_pin].duty_cycle = 0
