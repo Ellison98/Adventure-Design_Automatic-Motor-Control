@@ -6,7 +6,7 @@ from adafruit_pca9685 import PCA9685
 
 # 서보 및 스로틀 핀 설정
 servo_pin = 0          # PCA9685의 채널 0번: 서보 모터 제어
-throttle_pin = 15      # PCA9685의 채널 15번: 스로틀 제어
+throttle_pin = 1      # PCA9685의 채널 15번: 스로틀 제어
 
 # 시리얼 통신 설정
 arduino = serial.Serial('/dev/ttyACM1', 9600, timeout=1)
