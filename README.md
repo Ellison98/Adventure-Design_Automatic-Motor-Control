@@ -73,3 +73,36 @@ def load_data():
     data = [for_a.split(':') for for_a in data if ':' in for_a]  # ':'이 포함된 항목만 처리
     return {for_a[0]: int(for_a[1]) for for_a in data if len(for_a) == 2}  # 딕셔너리 반환
 ```
+
+
+<br>
+
+```python
+const int joystickX = A0; // 조종기의 X축 아날로그 핀
+const int joystickY = A1; // 조종기의 Y축 아날로그 핀
+const int threshold = 100; // 조종기 감지 임계값
+
+void setup() {
+    Serial.begin(9600);
+}
+
+void loop() {
+    int xValue = analogRead(joystickX); // X축 값 읽기
+    int yValue = analogRead(joystickY); // Y축 값 읽기
+
+    // 조종기가 움직였는지 확인
+    bool joystickMoved = (abs(xValue - 512) > threshold) || (abs(yValue - 512) > threshold);
+
+    // 조종기의 상태에 따라 전송할 데이터 형식 변경
+    if (joystickMoved) {  // 조종기가 움직였을 때
+        Serial.print("0:");
+        Serial.print(xValue); // X축 값 전송
+        Serial.print(" 1:");
+        Serial.print(yValue); // Y축 값 전송
+        Serial.print(" 2:150\n");  // 추가 데이터 전송
+    } else {
+        Serial.print("0:0 1:0 2:0\n");  // 조종기가 움직이지 않을 때
+    }
+    delay(100);  // 전송 주기 조정
+}
+```
