@@ -42,6 +42,18 @@ void loop() {
     backward = 0x0C80  # 후진 (3200)
 ```
 
+```
+# 서보 모터 및 ESC 제어를 위한 PWM 값 설정 (1000us ~ 2000us)
+left = 0x00CC  # 왼쪽으로 회전 (1000us)
+center = 0x0133  # 직진 (1500us, 중앙)
+right = 0x0199  # 오른쪽으로 회전 (2000us)
+
+# ESC 제어를 위한 PWM 값 설정 (전진/후진 제어)
+forward = 0x0199  # 전진 (2000us)
+stop = 0x0133  # 정지 (1500us)
+backward = 0x00CC  # 후진 (1000us)
+```
+
 ## vsCode
 ```
 import serial
