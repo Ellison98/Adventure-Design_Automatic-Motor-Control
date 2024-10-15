@@ -189,9 +189,3 @@ while True:
 pca.channels[throttle_pin].duty_cycle = stop_speed  # 스로틀 중지
 pca.channels[servo_pin].duty_cycle = servo_angle(90)  # 서보 모터 중앙 위치로 초기화
 ```
-
-
-env PYTHONIOENCODING=UTF-8 PYTHONUNBUFFERED=1 /usr/bin/python3 /home/mimiminu/.vscode-oss/extensions/ms-python.python-2019.3.6558/pythonFiles/ptvsd_launcher.py --default --client --host localhost --port 41125 /home/mimiminu/rcCar/test4.py 
-list index out of range
-Exiting... 
-Cleaning up pins
