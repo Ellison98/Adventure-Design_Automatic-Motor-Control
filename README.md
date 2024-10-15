@@ -32,14 +32,14 @@ void loop() {
 ```
 
 ```python
-    # 서보 모터를 위한 PWM 값 설정 (1000us에서 2000us 범위)
-    left = 204  # 왼쪽으로 회전 (1000us)
-    center = 307  # 직진 (1500us, 중앙)
-    right = 409  # 오른쪽으로 회전 (2000us)
-
-    forward = 409  # 전진 (2000us)
-    stop = 307  # 정지 (1500us)
-    backward = 204  # 후진 (1000us)
+    # 방향 및 속도 값 설정 (duty_cycle 값)
+    left = 0x0C80  # 왼쪽으로 회전 (3200)
+    center = 0x1388  # 직진 (5000)
+    right = 0x1F40  # 오른쪽으로 회전 (8000)
+    
+    forward = 0x1F40  # 전진 (8000)
+    stop = 0x1388  # 정지 (5000)
+    backward = 0x0C80  # 후진 (3200)
 ```
 
 ## vsCode
