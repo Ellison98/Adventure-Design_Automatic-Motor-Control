@@ -32,43 +32,6 @@ void loop() {
 ```
 
 
-## 아두이노 스티어링 확인 코드
-```
-void loop() {
-  // 스티어링의 HIGH 신호 지속 시간 측정
-  steer_duration = pulseIn(steer, HIGH);
-  steer_overall_duration = pulseIn(steer, LOW) + steer_duration;
-
-  // 쓰로틀의 HIGH 신호 지속 시간 측정
-  throttle_duration = pulseIn(throttle, HIGH);
-  throttle_overall_duration = pulseIn(throttle, LOW) + throttle_duration;
-
-  // 스티어링 및 쓰로틀 값을 0~255 범위의 PWM 값으로 변환
-  int motorSpeed1 = map(throttle_duration, 1000, 2000, 0, 255);  // 쓰로틀을 모터 속도로 변환
-  int motorSpeed2 = map(steer_duration, 1000, 2000, 0, 255);     // 스티어링을 모터 속도로 변환
-
-  // 모터에 PWM 신호 전달 (속도 제어)
-  analogWrite(motor1Pin, motorSpeed1);
-  analogWrite(motor2Pin, motorSpeed2);
-
-  // 스티어링 및 쓰로틀 값 출력
-  Serial.print("\t 스티어링 PWM Duration (HIGH): ");
-  Serial.print(steer_duration);
-  Serial.print("\t 스티어링 모터 속도 (mapped): ");
-  Serial.print(motorSpeed2);
-  Serial.println();
-
-  Serial.print("\t 전/후진 PWM Duration (HIGH): ");
-  Serial.print(throttle_duration);
-  Serial.print("\t 전/후진 모터 속도 (mapped): ");
-  Serial.print(motorSpeed1);
-  Serial.println();
- 
-  delay(1000);  // 1000ms 지연
-}
-```
-
-
 ## vsCode
 ```
 import busio
