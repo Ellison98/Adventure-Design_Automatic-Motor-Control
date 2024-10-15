@@ -13,12 +13,12 @@ def running():
     pca.frequency = 63
 
     # 방향 및 속도 값 설정 (duty_cycle 값)
-    left = 1093  # 왼쪽으로 회전
-    center = 0x170C  # 직진 (중앙, 예시로 계속 사용할 수 있음)
-    right = 1893  # 오른쪽으로 회전
-    forward = 1200  # 전진
-    stop = 0x1758  # 정지 (예시로 계속 사용할 수 있음)
-    backward = 1694  # 후진
+    left = 0x44D  # 왼쪽으로 회전 (1093)
+    center = 0x170C  # 직진 (중앙, 6000)
+    right = 0x76D  # 오른쪽으로 회전 (1893)
+    forward = 0x4B0  # 전진 (1200)
+    stop = 0x1758  # 정지 (6000)
+    backward = 0x6A6  # 후진 (1694)
 
     # 기본 값 설정 (정지, 중심)
     pca.channels[0].duty_cycle = center
@@ -43,12 +43,12 @@ def running():
                     pca.channels[0].duty_cycle = center
 
                 # 스로틀 값에 따른 속도 설정
-                if throttle_value < 1200:  # 후진
+                if throttle_value < 1400:  # 후진
                     pca.channels[1].duty_cycle = backward
-                elif throttle_value > 1694:  # 전진
-                    pca.channels[1].duty_cycle = forward
-                else:  # 정지
+                elif throttle_value < 1340:  # 정지
                     pca.channels[1].duty_cycle = stop
+                else:  # 전진
+                    pca.channels[1].duty_cycle = forward
 
             except ValueError:
                 print("wrong signal")
