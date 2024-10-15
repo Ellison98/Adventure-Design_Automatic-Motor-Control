@@ -10,11 +10,11 @@ def running():
     pca = PCA9685(i2c_bus)
     
     # PCA9685 주파수 설정
-    pca.frequency = 63
+    pca.frequency = 50
 
     # 방향 및 속도 값 설정 (duty_cycle 값)
     left = 0x44D  # 왼쪽으로 회전 (1093)
-    center = 0x170C  # 직진 (중앙, 6000)
+    center = 0x170C  # 직진 (6000)
     right = 0x76D  # 오른쪽으로 회전 (1893)
     forward = 0x4B0  # 전진 (1200)
     stop = 0x1758  # 정지 (6000)
@@ -30,8 +30,14 @@ def running():
             content = seri.readline().decode(errors='ignore').strip()
             try:
                 values = content.split(',')
+                if len(values) < 2:  # 스티어링과 스로틀 값이 충분하지 않은 경우
+                    print("잘못된 데이터 형식")
+                    continue
+                
+                # 스티어링 및 스로틀 값 안전하게 변환
                 steer_value = int(values[0].strip())  # 첫 번째 값은 스티어링
                 throttle_value = int(values[1].strip())  # 두 번째 값은 스로틀
+
                 print(f"스티어링: {steer_value}, 스로틀: {throttle_value}")
 
                 # 스티어링 값에 따른 방향 설정
@@ -50,8 +56,10 @@ def running():
                 else:  # 전진
                     pca.channels[1].duty_cycle = forward
 
-            except ValueError:
-                print("wrong signal")
+            except ValueError as e:
+                print(f"잘못된 신호: {e}")
+            except Exception as e:
+                print(f"예외 발생: {e}")
 
 if __name__ == "__main__":
     running()
