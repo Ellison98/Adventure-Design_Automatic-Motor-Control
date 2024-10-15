@@ -1,42 +1,54 @@
 ## 아두이노 Code
 ```python
-#include <Servo.h>
+int steer = 7;      // 스티어링 입력
+int throttle = 8;   // 쓰로틀 입력
+int motor1Pin = 9;  // 모터 1 출력 (PWM 핀)
+int motor2Pin = 10; // 모터 2 출력 (PWM 핀)
 
-// 서보 모터와 스로틀 모터에 대한 설정
-int steerPin = 7;
-int throttlePin = 8;
-
-Servo throttleServo;
-Servo steerServo;
-
-// 조종기 입력 값을 처리하는 함수
-String getCommandFromRemote() {
-  int x = analogRead(A0);  // 조종기의 x축 값 (좌우)
-  int y = analogRead(A1);  // 조종기의 y축 값 (전진, 후진)
-  
-  if (y > 800) {
-    return "FORWARD";
-  } else if (y < 200) {
-    return "BACKWARD";
-  } else if (x > 800) {
-    return "RIGHT";
-  } else if (x < 200) {
-    return "LEFT";
-  } else {
-    return "CENTER";
-  }
-}
+unsigned long steer_duration;
+unsigned long steer_overall_duration;
+unsigned long throttle_duration;
+unsigned long throttle_overall_duration;
 
 void setup() {
-  Serial.begin(9600);  // 라즈베리파이와 시리얼 통신 시작
-  throttleServo.attach(throttlePin);  // 스로틀 서보 모터 핀 연결
-  steerServo.attach(steerPin);  // 스티어 서보 모터 핀 연결
+  Serial.begin(9600);
+  pinMode(steer, INPUT);
+  pinMode(throttle, INPUT);
+  pinMode(motor1Pin, OUTPUT);  // 모터 1 핀을 출력으로 설정
+  pinMode(motor2Pin, OUTPUT);  // 모터 2 핀을 출력으로 설정
 }
 
 void loop() {
-  String command = getCommandFromRemote();  // 조종기 입력을 명령으로 변환
-  Serial.println(command);  // 라즈베리파이에 명령 전송
-  delay(100);  // 데이터를 일정 간격으로 보내기 위해 딜레이 추가
+  // 스티어링의 HIGH 신호 지속 시간 측정
+  steer_duration = pulseIn(steer, HIGH);
+  steer_overall_duration = pulseIn(steer, LOW) + steer_duration;
+
+  // 쓰로틀의 HIGH 신호 지속 시간 측정
+  throttle_duration = pulseIn(throttle, HIGH);
+  throttle_overall_duration = pulseIn(throttle, LOW) + throttle_duration;
+
+  // 스티어링 및 쓰로틀 값을 0~255 범위의 PWM 값으로 변환
+  int motorSpeed1 = map(throttle_duration, 1000, 2000, 0, 255);  // 쓰로틀을 모터 속도로 변환
+  int motorSpeed2 = map(steer_duration, 1000, 2000, 0, 255);     // 스티어링을 모터 속도로 변환
+
+  // 모터에 PWM 신호 전달 (속도 제어)
+  analogWrite(motor1Pin, motorSpeed1);
+  analogWrite(motor2Pin, motorSpeed2);
+
+  // 시리얼 모니터에 스티어링, 쓰로틀의 PWM 값 및 변환된 모터 속도 출력
+  Serial.print("\t 스티어링 PWM Duration (HIGH): ");
+  Serial.print(steer_duration);
+  //Serial.print("\t 조향 모터 속도 (mapped): ");
+  //Serial.print(motorSpeed2);  // 변환된 모터 속도 출력
+  Serial.println();
+
+  Serial.print("\t 전/후진 PWM Duration (HIGH): ");
+  Serial.print(throttle_duration);
+  Serial.print("\t 전/후진 모터 속도 (mapped): ");
+  Serial.print(motorSpeed1);  // 변환된 모터 속도 출력
+  Serial.println();
+ 
+  delay(1000);  // 1000ms 지연
 }
 ```
 
