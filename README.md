@@ -3,8 +3,8 @@
 #include <Servo.h>
 
 // 서보 모터와 스로틀 모터에 대한 설정
-int throttlePin = 9;
-int steerPin = 10;
+int steerPin = 7;
+int throttlePin = 8;
 
 Servo throttleServo;
 Servo steerServo;
