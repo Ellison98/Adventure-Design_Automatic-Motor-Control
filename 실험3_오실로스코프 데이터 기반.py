@@ -11,8 +11,8 @@ pca = PCA9685(i2c_bus)  # PCA9685 객체 생성
 pca.frequency = 60  # PWM 주파수를 60Hz로 설정
 
 # 아두이노에서 받은 PWM 범위에 따른 듀티 사이클 설정
-STEERING_CHANNEL = 0   # 서보모터에 해당하는 PCA9685의 채널 번호
-THROTTLE_CHANNEL = 1   # DC 모터 또는 서보모터에 해당하는 채널 번호
+STEERING_CHANNEL = 7   # 서보모터에 해당하는 PCA9685의 채널 번호
+THROTTLE_CHANNEL = 8   # DC 모터 또는 서보모터에 해당하는 채널 번호
 
 # 듀티 사이클 범위
 STEER_MIN_PWM = 220  # 서보 모터의 최소 PWM 값
