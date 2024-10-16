@@ -15,14 +15,14 @@ PWM_MIN = 0
 PWM_MAX = 65535
 
 # 스티어링과 쓰로틀의 입력 범위 (예: 아두이노에서 오는 값)
-STEER_MIN = 1000
-STEER_MAX = 2000
-THROTTLE_MIN = 1000
-THROTTLE_MAX = 2000
+STEER_MIN = 900
+STEER_MAX = 1900
+THROTTLE_MIN = 900
+THROTTLE_MAX = 1900
 
 # 채널 설정
-STEERING_CHANNEL = 0   # 서보모터 채널 (0~15)
-THROTTLE_CHANNEL = 1   # DC 모터 또는 서보모터 채널 (0~15)
+STEERING_CHANNEL = 7   # 서보모터 채널 (0~15)
+THROTTLE_CHANNEL = 8   # DC 모터 또는 서보모터 채널 (0~15)
 
 def map_value(value, in_min, in_max, out_min, out_max):
     """값을 특정 범위에서 다른 범위로 매핑하는 함수"""
