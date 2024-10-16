@@ -88,7 +88,7 @@ def running():
 
                 print(f"스티어링: {steer_value}, 스로틀: {throttle_value}")
 
-                # 스티어링 값에 따른 방향 설정
+                # 스티어링 값에 따른 방향 설정 -> 아두이노에서 전달되는 신호를 PWM신호로 봐꿔서 젯슨 나노에서 범위지정
                 if steer_value < 1200:  # 왼쪽으로 회전
                     pca.channels[0].duty_cycle = left
                 elif steer_value > 1600:  # 오른쪽으로 회전
