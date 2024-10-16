@@ -51,59 +51,64 @@ import busio
 from board import SCL, SDA
 from adafruit_pca9685 import PCA9685
 
-def initialize_pca9685():
-    """PCA9685 초기화 및 주파수 설정."""
+def running():
+    # I2C 버스 설정
     i2c_bus = busio.I2C(SCL, SDA)
-    pca_controller = PCA9685(i2c_bus)
-    pca_controller.frequency = 50  # 서보 모터의 기본 주파수
-    return pca_controller
+    pca = PCA9685(i2c_bus)
+    
+    # PCA9685 주파수 설정
+    pca.frequency = 60
 
-def set_motor_controls(pca_controller, steering_input, throttle_input):
-    """스티어링 및 스로틀 입력에 따라 모터 제어."""
-    # 모터의 PWM 값 설정
-    left_pwm = 1093        # 왼쪽으로 회전
-    center_pwm = 0x170C    # 중앙 (직진)
-    right_pwm = 1893       # 오른쪽으로 회전
-    forward_pwm = 1200     # 전진
-    stop_pwm = 0x1758      # 정지
-    backward_pwm = 1694    # 후진
+    # 방향 및 속도 값 설정 (duty_cycle 값)
+    left = 0x0C80  # 왼쪽으로 회전 (3200)
+    center = 0x1760  # 직진 (6000)
+    right = 0x1F40  # 오른쪽으로 회전 (8000)
+    
+    forward = 0x1B72  # 전진 (7038)
+    stop = 0x15D4  # 정지 (5588)
+    backward = 0x1274 # 후진 (3200)
 
-    # 스티어링 입력에 따른 방향 설정
-    if steering_input < 1400:  # 왼쪽으로 회전
-        pca_controller.channels[0].duty_cycle = left_pwm
-    elif steering_input > 1600:  # 오른쪽으로 회전
-        pca_controller.channels[0].duty_cycle = right_pwm
-    else:  # 중앙
-        pca_controller.channels[0].duty_cycle = center_pwm
+    # 기본 값 설정 (정지, 중심)
+    pca.channels[0].duty_cycle = center
+    pca.channels[1].duty_cycle = stop
 
-    # 스로틀 입력에 따른 속도 설정
-    if throttle_input < 1200:  # 후진
-        pca_controller.channels[1].duty_cycle = backward_pwm
-    elif throttle_input > 1694:  # 전진
-        pca_controller.channels[1].duty_cycle = forward_pwm
-    else:  # 정지
-        pca_controller.channels[1].duty_cycle = stop_pwm
+    # 시리얼 통신 설정 (아두이노와 연결)
+    with serial.Serial('/dev/ttyACM0', 9600, timeout=None) as seri:
+        while True:
+            content = seri.readline().decode(errors='ignore').strip()
+            try:
+                values = content.split(',')
+                if len(values) < 2:  # 스티어링과 스로틀 값이 충분하지 않은 경우
+                    print("잘못된 데이터 형식")
+                    continue
+                
+                # 스티어링 및 스로틀 값 안전하게 변환
+                steer_value = int(values[0].strip())  # 첫 번째 값은 스티어링
+                throttle_value = int(values[1].strip())  # 두 번째 값은 스로틀
 
-# PCA9685 초기화
-pca_controller = initialize_pca9685()
+                print(f"스티어링: {steer_value}, 스로틀: {throttle_value}")
 
-# 기본 값 설정 (정지, 중앙)
-pca_controller.channels[0].duty_cycle = 0x170C  # 중앙
-pca_controller.channels[1].duty_cycle = 0x1758  # 정지
+                # 스티어링 값에 따른 방향 설정
+                if steer_value < 1200:  # 왼쪽으로 회전
+                    pca.channels[0].duty_cycle = left
+                elif steer_value > 1600:  # 오른쪽으로 회전
+                    pca.channels[0].duty_cycle = right
+                else:  # 중앙
+                    pca.channels[0].duty_cycle = center
 
-# 시리얼 통신 설정 (아두이노와 연결)
-with serial.Serial('/dev/ttyACM0', 9600, timeout=None) as serial_connection:
-    while True:
-        data_line = serial_connection.readline().decode(errors='ignore').strip()
-        try:
-            # 시리얼 데이터에서 스티어링 및 스로틀 값 추출
-            steering_input, throttle_input = map(int, data_line.split(','))
-            print(f"스티어링: {steering_input}, 스로틀: {throttle_input}")
+                # 스로틀 값에 따른 속도 설정
+                if throttle_value < 1100:  # 후진
+                    pca.channels[1].duty_cycle = backward
+                elif throttle_value < 1500:  # 정지
+                    pca.channels[1].duty_cycle = stop
+                else:  # 전진
+                    pca.channels[1].duty_cycle = forward
 
-            # 모터 제어
-            set_motor_controls(pca_controller, steering_input, throttle_input)
+            except ValueError as e:
+                print(f"잘못된 신호: {e}")
+            except Exception as e:
+                print(f"예외 발생: {e}")
 
-        except ValueError:  
-            print("잘못된 신호")
-
+if __name__ == "__main__":
+    running()
 ```
