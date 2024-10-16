@@ -62,12 +62,18 @@ def running():
                     print(f"잘못된 데이터 형식: {content}")
                     continue
 
-                # 아두이노로부터 받은 값을 정수로 변환
-                steer_duration = int(values[0].strip())  # 스티어링 값 (1000~2000 범위)
-                throttle_duration = int(values[1].strip())  # 쓰로틀 값 (1000~2000 범위)
+                # 데이터가 숫자인지 확인하고, 값이 너무 크거나 작은지 검증
+                if values[0].isdigit() and values[1].isdigit():
+                    steer_duration = int(values[0].strip())  # 스티어링 값 (1000~2000 범위)
+                    throttle_duration = int(values[1].strip())  # 쓰로틀 값 (1000~2000 범위)
 
-                # 모터의 PWM 값 설정
-                set_motor_pwm(steer_duration, throttle_duration)
+                    if 900 <= steer_duration <= 1900 and 900 <= throttle_duration <= 1900:
+                        # 모터의 PWM 값 설정
+                        set_motor_pwm(steer_duration, throttle_duration)
+                    else:
+                        print(f"비정상적인 값 범위: {steer_duration}, {throttle_duration}")
+                else:
+                    print(f"숫자가 아닌 값 수신됨: {content}")
 
             except ValueError:
                 print(f"잘못된 신호: {content}")
