@@ -46,15 +46,20 @@ def set_motor_pwm(steer_value, throttle_value):
 def running():
     # 시리얼 포트 설정 (아두이노에서 데이터 수신)
     with serial.Serial('/dev/ttyACM0', 9600, timeout=None) as seri:
+        # 시리얼 버퍼 비우기
+        seri.reset_input_buffer()
+        
         while True:
             try:
                 # 아두이노로부터 데이터 읽기
                 content = seri.readline().decode(errors='ignore').strip()
+
+                # 데이터를 쉼표로 분리
                 values = content.split(',')
 
                 # 값이 두 개 미만이면 처리하지 않음
                 if len(values) < 2:
-                    print("잘못된 데이터 형식")
+                    print(f"잘못된 데이터 형식: {content}")
                     continue
 
                 # 아두이노로부터 받은 값을 정수로 변환
@@ -65,7 +70,7 @@ def running():
                 set_motor_pwm(steer_duration, throttle_duration)
 
             except ValueError:
-                print("잘못된 신호")
+                print(f"잘못된 신호: {content}")
             except Exception as e:
                 print(f"예외 발생: {e}")
 
