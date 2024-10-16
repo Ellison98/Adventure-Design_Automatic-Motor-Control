@@ -31,6 +31,58 @@ void loop() {
 }
 ```
 
+## 함수변경
+```python
+int steer = 7;       // 스티어링 입력
+int throttle = 8;    // 쓰로틀 입력
+
+volatile unsigned long steer_start_time = 0;
+volatile unsigned long throttle_start_time = 0;
+volatile unsigned long steer_duration = 0;
+volatile unsigned long throttle_duration = 0;
+
+void setup() {
+  Serial.begin(9600);
+  
+  pinMode(steer, INPUT);
+  pinMode(throttle, INPUT);
+
+  // 스티어링 핀의 변화 감지 인터럽트 설정
+  attachInterrupt(digitalPinToInterrupt(steer), steerISR, CHANGE);
+  
+  // 쓰로틀 핀의 변화 감지 인터럽트 설정
+  attachInterrupt(digitalPinToInterrupt(throttle), throttleISR, CHANGE);
+}
+
+void loop() {
+  // 읽은 PWM 값을 시리얼 모니터에 출력
+  Serial.print("Steering Duration: ");
+  Serial.print(steer_duration);
+  Serial.print(", Throttle Duration: ");
+  Serial.println(throttle_duration);
+
+  delay(100);  // 100ms 지연
+}
+
+// 스티어링 신호의 변화를 감지하는 인터럽트 서비스 루틴
+void steerISR() {
+  if (digitalRead(steer) == HIGH) {
+    steer_start_time = micros();  // HIGH 시작 시간 기록
+  } else {
+    steer_duration = micros() - steer_start_time;  // HIGH 지속 시간 계산
+  }
+}
+
+// 쓰로틀 신호의 변화를 감지하는 인터럽트 서비스 루틴
+void throttleISR() {
+  if (digitalRead(throttle) == HIGH) {
+    throttle_start_time = micros();  // HIGH 시작 시간 기록
+  } else {
+    throttle_duration = micros() - throttle_start_time;  // HIGH 지속 시간 계산
+  }
+}
+```
+
 ```python
     # 방향 및 속도 값 설정 (duty_cycle 값)
     left = 0x0C80  # 왼쪽으로 회전 (3200)
