@@ -12,13 +12,13 @@ pca.frequency = 60
 
 # 듀티 사이클 범위 (0~65535: 16비트 범위)
 PWM_MIN = 0
-PWM_MAX = 14465  # 최대 PWM 값을 65535로 설정
+PWM_MAX = 65535  # 최대 PWM 값을 65535로 설정
 
 # 스티어링과 쓰로틀의 입력 범위 (예: 아두이노에서 오는 값)
-STEER_MIN = 900
-STEER_MAX = 1900
-THROTTLE_MIN = 900
-THROTTLE_MAX = 1900
+STEER_MIN = 800
+STEER_MAX = 2100
+THROTTLE_MIN = 800
+THROTTLE_MAX = 2100
 
 def map_value(value, in_min, in_max, out_min, out_max):
     """값을 특정 범위에서 다른 범위로 매핑하는 함수"""
@@ -26,18 +26,15 @@ def map_value(value, in_min, in_max, out_min, out_max):
 
 def set_motor_pwm(steer_value, throttle_value):
     """모터의 PWM 값을 설정하는 함수"""
-    # 스티어링 값을 1000~2000 범위에서 0~65535 범위로 변환
     steer_pwm = map_value(steer_value, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
-
-    # 쓰로틀 값을 1000~2000 범위에서 0~65535 범위로 변환
     throttle_pwm = map_value(throttle_value, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
 
-    # 변환된 PWM 값을 PCA9685에 설정
+    # PWM 값 출력 (디버깅용)
+    print(f"입력 스티어링: {steer_value}, 입력 쓰로틀: {throttle_value}")
+    print(f"변환된 스티어링 PWM: {steer_pwm}, 변환된 쓰로틀 PWM: {throttle_pwm}")
+
     pca.channels[0].duty_cycle = steer_pwm
     pca.channels[1].duty_cycle = throttle_pwm
-
-    # 변환된 값 출력
-    print(f"스티어링 PWM 값: {steer_pwm}, 쓰로틀 PWM 값: {throttle_pwm}")
 
 def running():
     # 시리얼 포트 설정 (아두이노에서 데이터 수신)
@@ -49,22 +46,17 @@ def running():
             try:
                 # 아두이노로부터 데이터 읽기
                 content = seri.readline().decode(errors='ignore').strip()
-
-                # 데이터를 쉼표로 분리
                 values = content.split(',')
 
-                # 값이 두 개 미만이면 처리하지 않음
                 if len(values) < 2:
                     print(f"잘못된 데이터 형식: {content}")
                     continue
 
-                # 데이터가 숫자인지 확인하고, 값이 너무 크거나 작은지 검증
                 if values[0].isdigit() and values[1].isdigit():
-                    steer_duration = int(values[0].strip())  # 스티어링 값 (1000~2000 범위)
-                    throttle_duration = int(values[1].strip())  # 쓰로틀 값 (1000~2000 범위)
+                    steer_duration = int(values[0].strip())
+                    throttle_duration = int(values[1].strip())
 
-                    if 900 <= steer_duration <= 1900 and 900 <= throttle_duration <= 1900:
-                        # 모터의 PWM 값 설정
+                    if STEER_MIN <= steer_duration <= STEER_MAX and THROTTLE_MIN <= throttle_duration <= THROTTLE_MAX:
                         set_motor_pwm(steer_duration, throttle_duration)
                     else:
                         print(f"비정상적인 값 범위: {steer_duration}, {throttle_duration}")
