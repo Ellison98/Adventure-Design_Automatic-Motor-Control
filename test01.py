@@ -59,16 +59,16 @@ def running():
                     switch_bt_duration = int(values[2].strip())
 
                     # 모드 구분
-                    mode = "AUTO" if switch_bt_duration >= SWITCH_THRESHOLD else "MANUAL"
+                    mode = "MANUAL" if switch_bt_duration >= SWITCH_THRESHOLD else "AUTO"
                     print(f"모드: {mode} (스위치 값: {switch_bt_duration})")
 
-                    if mode == "AUTO":
+                    if mode == "MANUAL":
                         if STEER_MIN <= steer_duration <= STEER_MAX and THROTTLE_MIN <= throttle_duration <= THROTTLE_MAX:
                             set_motor_pwm(steer_duration, throttle_duration)
                         else:
                             print(f"비정상적인 값 범위: {steer_duration}, {throttle_duration}")
                     else:
-                        print("수동 모드 - 모터 제어 중지")
+                        print("AUTO")
 
                 else:
                     print(f"숫자가 아닌 값 수신됨: {content}")
