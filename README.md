@@ -2,16 +2,26 @@
 
 ## 아두이노 Code
 ```python
+#define LEFT_SENSORPIN A1
+#define CENTER_SENSORPIN A2
+#define RIGHT_SENSORPIN A3
 int steer = 7;      // 스티어링 입력
 int throttle = 8;   // 쓰로틀 입력
-
+int switch_bt = 9;
 unsigned long steer_duration;
 unsigned long throttle_duration;
+unsigned long switch_bt_duration;
+
+
 
 void setup() {
   Serial.begin(9600);
   pinMode(steer, INPUT);
   pinMode(throttle, INPUT);
+  pinMode(switch_bt, INPUT);
+  pinMode(LEFT_SENSORPIN, INPUT);
+  pinMode(CENTER_SENSORPIN, INPUT);
+  pinMode(RIGHT_SENSORPIN, INPUT);
 }
 
 void loop() {
@@ -20,14 +30,27 @@ void loop() {
   
   // 쓰로틀의 HIGH 신호 지속 시간 측정
   throttle_duration = pulseIn(throttle, HIGH, 900000);
+  
+  switch_bt_duration = pulseIn(switch_bt, HIGH, 90000);
 
   // 시리얼 모니터에 스티어링, 쓰로틀의 PWM 값 및 변환된 모터 속도 출력
+  byte leftSensor=digitalRead(LEFT_SENSORPIN);
+  byte centorSensor=digitalRead(CENTER_SENSORPIN);
+  byte rightSensor=digitalRead(RIGHT_SENSORPIN);
 
   Serial.print(steer_duration);
   Serial.print(',');
   Serial.print(throttle_duration);
+  Serial.print(',');
+  Serial.print(switch_bt_duration);
+  Serial.print(',');
+  Serial.print(leftSensor);
+  Serial.print(',');
+  Serial.print(centorSensor);
+  Serial.print(',');
+  Serial.print(rightSensor);
   Serial.print('\n');
-
+ 
  
   delay(100);  // 100ms 지연
 }
