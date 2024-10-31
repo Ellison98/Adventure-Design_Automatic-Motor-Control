@@ -1,0 +1,25 @@
+```python
+def follow_line(left_sensor, center_sensor, right_sensor):
+    """센서 값을 기반으로 라인을 따라 천천히 움직이는 함수"""
+    if center_sensor == 0:
+        print("직진 중...")
+        # 중앙 센서가 라인을 인식하면 직진 (스로틀 1700)
+        pca.channels[1].duty_cycle = map_value(1700, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
+        pca.channels[0].duty_cycle = map_value(1500, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 스티어링 중립 위치
+    elif left_sensor == 0:
+        print("왼쪽으로 조금 회전")
+        # 왼쪽 센서가 라인을 인식하면 왼쪽으로 회전 (스티어링 1000)
+        pca.channels[1].duty_cycle = map_value(1700, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 계속 진행
+        pca.channels[0].duty_cycle = map_value(1000, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 왼쪽 회전
+    elif right_sensor == 0:
+        print("오른쪽으로 조금 회전")
+        # 오른쪽 센서가 라인을 인식하면 오른쪽으로 회전 (스티어링 1700)
+        pca.channels[1].duty_cycle = map_value(1700, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 계속 진행
+        pca.channels[0].duty_cycle = map_value(1700, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 오른쪽 회전
+    else:
+        print("정지 중...")
+        # 모든 센서가 라인을 감지하지 못하면 정지 (스로틀 1400)
+        pca.channels[1].duty_cycle = map_value(1400, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 정지
+        pca.channels[0].duty_cycle = map_value(1500, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 스티어링 중립 위치
+
+```
