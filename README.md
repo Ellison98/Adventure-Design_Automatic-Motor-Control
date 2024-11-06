@@ -102,42 +102,66 @@ def set_motor_pwm(steer_value, throttle_value):
     pca.channels[0].duty_cycle = steer_pwm
     pca.channels[1].duty_cycle = throttle_pwm
 
-def follow_line(left_sensor, center_sensor, right_sensor):
+def follow_line(left_sensor, center_sensor, right_sensor,lt,rt):
     """센서 값을 기반으로 라인을 따라 천천히 움직이는 함수"""
-    if center_sensor == 1:
+    if center_sensor == 1 and left_sensor==0 and right_sensor==0:
         print("직진 중...")
         # # 중앙 센서가 라인을 인식하면 직진 (스로틀 1700)
-        pca.channels[1].duty_cycle = map_value(1381, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
-        pca.channels[0].duty_cycle = map_value(1400, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 스티어링 중립 위치
+        pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
+        pca.channels[0].duty_cycle = map_value(1390, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 스티어링 중립 위치
+        lt= False
+        rt= True
+    elif left_sensor == 1 and right_sensor==1:
+        pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 계속 진행
+        pca.channels[0].duty_cycle = map_value(1390, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 왼쪽 회전
+        lt= False
+        rt= False
 
 
     elif left_sensor == 1:
         print("왼쪽으로 조금 회전")
         # 왼쪽 센서가 라인을 인식하면 왼쪽으로 회전
-        pca.channels[1].duty_cycle = map_value(1381, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 계속 진행
-        pca.channels[0].duty_cycle = map_value(1440, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 왼쪽 회전
-
+        if center_sensor==1:
+            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 계속 진행
+            pca.channels[0].duty_cycle = map_value(1250, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 왼쪽 회전
+        else:
+            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 계속 진행
+            pca.channels[0].duty_cycle = map_value(1240, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 왼쪽 회전
+        lt=True
+        rt=False
 
     elif right_sensor == 1:
         print("오른쪽으로 조금 회전")
         # 오른쪽 센서가 라인을 인식하면 오른쪽으로 회전
-        pca.channels[1].duty_cycle = map_value(1381, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 계속 진행
-        pca.channels[0].duty_cycle = map_value(1320, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 오른쪽 회전
-
-
-    else:
-        print("정지 중...")
-        # 모든 센서가 라인을 감지하지 못하면 정지 (스로틀 1400)
-        pca.channels[1].duty_cycle = map_value(1342, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 정지
-        pca.channels[0].duty_cycle = map_value(1400, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 스티어링 중립 위치
-
+        if center_sensor==1:
+            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 계속 진행
+            pca.channels[0].duty_cycle = map_value(1510, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 오른쪽 회전
+        else:
+            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 계속 진행
+            pca.channels[0].duty_cycle = map_value(1520, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 오른쪽 회전
+        lt=False
+        rt=True
+        
+    elif left_sensor==0 and center_sensor==0 and right_sensor==0:
+        if lt:
+            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 계속 진행
+            pca.channels[0].duty_cycle = map_value(1240, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 왼쪽 회전
+        elif rt:
+            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 계속 진행
+            pca.channels[0].duty_cycle = map_value(1520, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 오른쪽 회전
+        else:
+            print("정지 중...")
+            # 모든 센서가 라인을 감지하지 못하면 정지 (스로틀 1400)
+            pca.channels[1].duty_cycle = map_value(1265, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)  # 정지
+            pca.channels[0].duty_cycle = map_value(1390, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)  # 스티어링 중립 위치
+    return lt,rt
 
 def running():
     # 시리얼 포트 설정 (아두이노에서 데이터 수신)
     with serial.Serial('/dev/ttyACM0', 9600, timeout=None) as seri:
         # 시리얼 버퍼 비우기
         seri.reset_input_buffer()
-        
+        lt,rt=False,False
         while True:
             try:
                 # 아두이노로부터 데이터 읽기
@@ -150,7 +174,7 @@ def running():
 
                 if all(value.isdigit() for value in values[:6]):
                     steer_duration = int(values[0].strip())
-                    throttle_duration = int(values[1].strip())
+                    throttle_duration = int(values[1].strip()) - 48
                     switch_bt_duration = int(values[2].strip())
                     left_sensor = int(values[3].strip())
                     center_sensor = int(values[4].strip())
@@ -166,7 +190,7 @@ def running():
                         else:
                             print(f"비정상적인 값 범위: {steer_duration}, {throttle_duration}")
                     else:
-                        follow_line(left_sensor, center_sensor, right_sensor)
+                        lt,rt=follow_line(left_sensor, center_sensor, right_sensor,lt,rt)
 
                 else:
                     print(f"숫자가 아닌 값 수신됨: {content}")
