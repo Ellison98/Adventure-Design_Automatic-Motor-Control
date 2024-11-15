@@ -206,24 +206,17 @@ if __name__ == "__main__":
 
 
 sudo apt-get update
-sudo apt-get install v4l2-utils
-sudo apt-get install libopencv-dev python3-opencv
+sudo apt-get install gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad
 
-
-
-v4l2-ctl --list-devices
-
-
-
-pip install opencv-python
-
-
-
-
+```
 import cv2
 
-# 카메라 연결 (0번 카메라는 기본적으로 연결된 첫 번째 카메라)
-cap = cv2.VideoCapture(0)
+# GStreamer 파이프라인을 이용해 카메라 스트림 열기
+# 비디오 캡처 장치로 v4l2 (Video4Linux2) 사용
+gst_str = "v4l2src device=/dev/video0 ! video/x-raw, width=640, height=480, framerate=30/1 ! videoconvert ! appsink"
+
+# OpenCV에서 GStreamer 파이프라인을 사용하여 비디오 캡처
+cap = cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
 
 # 카메라가 제대로 열리지 않은 경우
 if not cap.isOpened():
@@ -240,15 +233,14 @@ while True:
         break
 
     # 읽은 프레임을 화면에 표시
-    cv2.imshow('Camera', frame)
+    cv2.imshow('Camera Stream', frame)
 
     # 'q' 키를 누르면 종료
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# 카메라 자원 해제 및 창 닫기
+# 자원 해제 및 창 닫기
 cap.release()
 cv2.destroyAllWindows()
-
-
+```
 
