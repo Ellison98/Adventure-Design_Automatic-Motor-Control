@@ -205,52 +205,78 @@ if __name__ == "__main__":
 ```
 
 
-sudo apt-get update
-sudo apt-get install gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad
+```
+sudo apt update
+sudo apt install -y \
+build-essential \
+cmake \
+git \
+pkg-config \
+libjpeg-dev \
+libpng-dev \
+libtiff-dev \
+libdc1394-22-dev \
+libgstreamer1.0-dev \
+libgstreamer-plugins-base1.0-dev \
+libopencv-dev \
+libeigen3-dev \
+libjasper-dev \
+libtbb2 \
+libtbb-dev \
+libprotobuf-dev \
+protobuf-compiler \
+libgflags-dev \
+libgoogle-glog-dev \
+liblmdb-dev
+```
+
+
+
+
+```
+git clone https://github.com/opencv/opencv.git
+git clone https://github.com/opencv/opencv_contrib.git
+cd opencv
+```
+
+
+
+```
+mkdir build
+cd build
+cmake -D WITH_GSTREAMER=ON -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules ..
+```
+
+
+```
+make -j$(nproc)  # 여러 코어를 사용하여 병렬로 빌드
+sudo make install
+```
+
+
 
 ```
 import cv2
 
-# GStreamer 파이프라인을 이용해 카메라 스트림 열기
-# 비디오 캡처 장치로 v4l2 (Video4Linux2) 사용
+# GStreamer 파이프라인 정의
 gst_str = "v4l2src device=/dev/video0 ! video/x-raw, width=640, height=480, framerate=30/1 ! videoconvert ! appsink"
 
-# OpenCV에서 GStreamer 파이프라인을 사용하여 비디오 캡처
+# GStreamer 파이프라인을 사용하여 비디오 캡처
 cap = cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
 
-# 카메라가 제대로 열리지 않은 경우
-if not cap.isOpened():
-    print("카메라를 열 수 없습니다.")
-    exit()
+# 캡처가 성공적으로 열리면
+if cap.isOpened():
+    while True:
+        ret, frame = cap.read()
+        if ret:
+            cv2.imshow("Frame", frame)
 
-# 영상 출력 루프
-while True:
-    # 프레임 읽기
-    ret, frame = cap.read()
+        # 'q' 키를 누르면 종료
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+else:
+    print("GStreamer 파이프라인 열기 실패!")
 
-    if not ret:
-        print("프레임을 읽을 수 없습니다.")
-        break
-
-    # 읽은 프레임을 화면에 표시
-    cv2.imshow('Camera Stream', frame)
-
-    # 'q' 키를 누르면 종료
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# 자원 해제 및 창 닫기
 cap.release()
 cv2.destroyAllWindows()
 ```
-
-
-sudo apt-get install v4l2-utils
-v4l2-ctl --list-devices
-
-
-sudo apt install build-essential
-sudo apt install libv4l-dev
-
-git clone https://github.com/umlaeute/v4l2-utils.git
-cd v4l2-utils
