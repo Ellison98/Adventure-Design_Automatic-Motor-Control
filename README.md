@@ -203,3 +203,52 @@ def running():
 if __name__ == "__main__":
     running()
 ```
+
+
+sudo apt-get update
+sudo apt-get install v4l2-utils
+sudo apt-get install libopencv-dev python3-opencv
+
+
+
+v4l2-ctl --list-devices
+
+
+
+pip install opencv-python
+
+
+
+
+import cv2
+
+# 카메라 연결 (0번 카메라는 기본적으로 연결된 첫 번째 카메라)
+cap = cv2.VideoCapture(0)
+
+# 카메라가 제대로 열리지 않은 경우
+if not cap.isOpened():
+    print("카메라를 열 수 없습니다.")
+    exit()
+
+# 영상 출력 루프
+while True:
+    # 프레임 읽기
+    ret, frame = cap.read()
+
+    if not ret:
+        print("프레임을 읽을 수 없습니다.")
+        break
+
+    # 읽은 프레임을 화면에 표시
+    cv2.imshow('Camera', frame)
+
+    # 'q' 키를 누르면 종료
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# 카메라 자원 해제 및 창 닫기
+cap.release()
+cv2.destroyAllWindows()
+
+
+
