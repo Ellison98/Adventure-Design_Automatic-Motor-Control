@@ -247,3 +247,10 @@ cv2.destroyAllWindows()
 
 sudo apt-get install v4l2-utils
 v4l2-ctl --list-devices
+
+
+sudo apt install build-essential
+sudo apt install libv4l-dev
+
+git clone https://github.com/umlaeute/v4l2-utils.git
+cd v4l2-utils
