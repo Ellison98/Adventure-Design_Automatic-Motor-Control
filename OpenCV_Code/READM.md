@@ -1,3 +1,14 @@
+## 파이썬 버전 설정
+```python
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.7 2
+sudo update-alternatives --config python
+```
+```
+sudo apt install python3-pip
+sudo update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+```
+
 # 1차 수정 코드
 ## 코드 설명
 OpenCV 기반 차선 인식:
