@@ -205,6 +205,8 @@ if __name__ == "__main__":
 ```
 
 
+
+## OpenCV 설치과정
 ```
 sudo apt update
 sudo apt install -y \
