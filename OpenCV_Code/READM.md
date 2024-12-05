@@ -1,3 +1,18 @@
+## Error
+```
+mimiminu@mimiminu-desktop:~/Desktop/2nd_rc$ sudo python2.7 -m pip install Adafruit-Blinka
+The directory '/home/mimiminu/.cache/pip/http' or its parent directory is not owned by the current user and the cache has been disabled. Please check the permissions and owner of that directory. If executing pip with sudo, you may want sudo's -H flag.
+The directory '/home/mimiminu/.cache/pip' or its parent directory is not owned by the current user and caching wheels has been disabled. check the permissions and owner of that directory. If executing pip with sudo, you may want sudo's -H flag.
+Collecting Adafruit-Blinka
+  Could not find a version that satisfies the requirement Adafruit-Blinka (from versions: )
+No matching distribution found for Adafruit-Blinka
+mimiminu@mimiminu-desktop:~/Desktop/2nd_rc$ python2.7 test01.py
+Traceback (most recent call last):
+  File "test01.py", line 4, in <module>
+    import busio
+ImportError: No module named busio
+```
+
 ## 파이썬 버전 설정
 ```python
 sudo update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
