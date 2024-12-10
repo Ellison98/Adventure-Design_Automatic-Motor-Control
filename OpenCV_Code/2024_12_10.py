@@ -109,8 +109,15 @@ def follow_line_using_opencv(frame):
         throttle_value = 1332  # 기본 속도
 
     # 6. 시각화
+    # 왼쪽 및 오른쪽 차선
+    if left_line is not None:
+        draw_lane_lines(frame, [left_line], color=(0, 255, 0))  # 초록선
+    if right_line is not None:
+        draw_lane_lines(frame, [right_line], color=(0, 255, 0))  # 초록선
+
+    # 중심선
     if center_line is not None:
-        cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)
+        cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)  # 파란선
         cv2.putText(frame, f"Angle: {angle:.2f} deg", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
     set_motor_pwm(steer_value, throttle_value)
@@ -190,6 +197,13 @@ def calculate_center_line(left_line, right_line):
 
     return (x1_center, y1_center, x2_center, y2_center)
 
+def draw_lane_lines(frame, lines, color=(0, 255, 0), thickness=5):
+    """Draw lane lines on the frame."""
+    for line in lines:
+        if line is not None:
+            x1, y1, x2, y2 = line
+            cv2.line(frame, (x1, y1), (x2, y2), color, thickness)
+
 def running():
     # OpenCV를 사용하여 카메라에서 실시간 프레임을 캡처
     gst_pipeline = (
@@ -200,7 +214,7 @@ def running():
     )
     cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
     if not cap.isOpened():
-        print("Failed to read frame. check the camera")
+        print("Failed to read frame. Check the camera.")
         return
 
     while True:
