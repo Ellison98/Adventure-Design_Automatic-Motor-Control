@@ -24,25 +24,106 @@ THROTTLE_MAX = 2100
 # 자동/수동 모드 기준값
 SWITCH_THRESHOLD = 1350
 
-# 조향 변화 제한
-PREV_STEER = 1390  # 초기값 (중립 상태)
-MAX_STEERING_CHANGE = 100  # 허용하는 최대 조향 변화
-
 def map_value(value, in_min, in_max, out_min, out_max):
     """값을 특정 범위에서 다른 범위로 매핑하는 함수"""
     return int((value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
+
+def calculate_angle(line):
+    """라인의 기울기를 통해 각도를 계산"""
+    x1, y1, x2, y2 = line
+    angle = math.degrees(math.atan2(y2 - y1, x2 - x1))
+    return angle
+
+def limit_steering_change(current_steer):
+    """조향 변화 제한"""
+    global PREV_STEER
+    if abs(current_steer - PREV_STEER) > MAX_STEERING_CHANGE:
+        if current_steer > PREV_STEER:
+            current_steer = PREV_STEER + MAX_STEERING_CHANGE
+        else:
+            current_steer = PREV_STEER - MAX_STEERING_CHANGE
+    PREV_STEER = current_steer
+    return current_steer
 
 def set_motor_pwm(steer_value, throttle_value):
     """모터의 PWM 값을 설정하는 함수"""
     steer_pwm = map_value(steer_value, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
     throttle_pwm = map_value(throttle_value, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
 
-    # PWM 값 설정
+    # PWM 값 출력 (디버깅용)
+    print(f"입력 스티어링: {steer_value}, 입력 쓰로틀: {throttle_value}")
+    print(f"변환된 스티어링 PWM: {steer_pwm}, 변환된 쓰로틀 PWM: {throttle_pwm}")
+
     pca.channels[0].duty_cycle = steer_pwm
     pca.channels[1].duty_cycle = throttle_pwm
 
+def follow_line_using_opencv(frame):
+    """OpenCV를 이용해 라인을 따라 움직이는 함수"""
+    global PREV_STEER
+    height, width = frame.shape[:2]
+
+    # 1. 그레이스케일 변환 및 블러 처리
+    gray_img = grayscale(frame)
+    blur_img = gaussian_blur(gray_img, 3)
+
+    # 2. Canny 엣지 검출
+    canny_img = canny(blur_img, 50, 150)
+
+    # 3. 관심 영역 설정
+    vertices = np.array([[
+        (width * 0.1, height),
+        (width * 0.45, height * 0.6),
+        (width * 0.55, height * 0.6),
+        (width * 0.9, height)
+    ]], dtype=np.int32)
+    ROI_img = region_of_interest(canny_img, vertices)
+
+    # 4. 허프 변환을 통한 라인 검출
+    lines = cv2.HoughLinesP(ROI_img, 1, np.pi/180, threshold=30, minLineLength=20, maxLineGap=2)
+    left_line, right_line = None, None
+    center_line = None
+
+    if lines is not None:
+        left_line, right_line = filter_and_average_line(lines, width, height)
+        center_line = calculate_center_line(left_line, right_line)
+
+    # 5. 스티어링과 쓰로틀 결정
+    if center_line is not None:
+        x1, y1, x2, y2 = center_line
+        center_x = (x1 + x2) // 2
+        steer_value = map_value(center_x, 0, width, STEER_MIN, STEER_MAX)
+
+        # 중심선의 각도 계산
+        angle = calculate_angle(center_line)
+        print(f"중심선의 각도: {angle:.2f}도")
+
+        # 조향 변화 제한 적용
+        steer_value = limit_steering_change(steer_value)
+
+        # 일정한 속도로 전진
+        throttle_value = 1382  
+    else:
+        print("라인을 찾지 못했습니다. 기본값으로 직진합니다.")
+        steer_value = limit_steering_change(1390)  # 중립 스티어링
+        throttle_value = 1332  # 기본 속도
+
+    # 6. 시각화
+    # 왼쪽 및 오른쪽 차선
+    if left_line is not None:
+        draw_lane_lines(frame, [left_line], color=(0, 255, 0))  # 초록선
+    if right_line is not None:
+        draw_lane_lines(frame, [right_line], color=(0, 255, 0))  # 초록선
+
+    # 중심선
+    if center_line is not None:
+        cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)  # 파란선
+        cv2.putText(frame, f"Angle: {angle:.2f} deg", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+    set_motor_pwm(steer_value, throttle_value)
+
+# 기존 함수 그대로 유지
 def grayscale(frame):
-    return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    return cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 
 def gaussian_blur(frame, kernel_size):
     return cv2.GaussianBlur(frame, (kernel_size, kernel_size), 0)
@@ -85,7 +166,7 @@ def filter_and_average_line(lines, width, height):
         if slope is None or intercept is None:
             return None
         y1 = height
-        y2 = int(height * 0.6)
+        y2 = int((height * 0.6))
         x1 = int((y1 - intercept) / slope)
         x2 = int((y2 - intercept) / slope)
         return (x1, y1, x2, y2)
@@ -115,58 +196,34 @@ def calculate_center_line(left_line, right_line):
 
     return (x1_center, y1_center, x2_center, y2_center)
 
-def follow_line_using_opencv(frame, lt, rt):
-    """OpenCV를 이용해 라인을 따라 움직이는 함수"""
-    height, width = frame.shape[:2]
-
-    # OpenCV 라인 검출
-    gray_img = grayscale(frame)
-    blur_img = gaussian_blur(gray_img, 3)
-    canny_img = canny(blur_img, 50, 150)
-    vertices = np.array([[
-        (0, height),
-        (width * 0.1, height * 0.6),
-        (width * 0.9, height * 0.6),
-        (width, height)
-    ]], dtype=np.int32)
-    ROI_img = region_of_interest(canny_img, vertices)
-    lines = cv2.HoughLinesP(ROI_img, 1, np.pi / 180, threshold=30, minLineLength=20, maxLineGap=2)
-
-    center_x = None
-    if lines is not None:
-        left_line, right_line = filter_and_average_line(lines, width, height)
-        center_line = calculate_center_line(left_line, right_line)
-        if center_line is not None:
-            x1, y1, x2, y2 = center_line
-            center_x = (x1 + x2) // 2
-
-    if center_x is not None:
-        # 중심선을 따라 조향
-        if abs(center_x - width // 2) < 20:
-            pca.channels[0].duty_cycle = map_value(1400, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
-            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
-        elif center_x < width // 2:
-            pca.channels[0].duty_cycle = map_value(1500, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
-            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
-        else:
-            pca.channels[0].duty_cycle = map_value(1300, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
-            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
-    else:
-        # 라인을 찾지 못했을 때
-        pca.channels[0].duty_cycle = map_value(1400, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
-        pca.channels[1].duty_cycle = map_value(1265, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
+def draw_lane_lines(frame, lines, color=(0, 255, 0), thickness=5):
+    """Draw lane lines on the frame."""
+    for line in lines:
+        if line is not None:
+            x1, y1, x2, y2 = line
+            cv2.line(frame, (x1, y1), (x2, y2), color, thickness)
 
 def running():
-    # 시리얼 포트 설정
+    gst_pipeline = (
+        "nvarguscamerasrc sensor-id=0 ! "
+        "video/x-raw(memory:NVMM), width=1280, height=720, format=(string)NV12, framerate=30/1 ! "
+        "nvvidconv flip-method=0 ! "
+        "video/x-raw, format=(string)BGRx ! videoconvert ! video/x-raw, format=(string)BGR ! appsink"
+    )
+
+    cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+
+    if not cap.isOpened():
+        print("GStreamer 파이프라인을 통해 카메라를 열 수 없습니다. 기본 카메라를 시도합니다.")
+        cap = cv2.VideoCapture(0)
+
+    if not cap.isOpened():
+        print("카메라를 열 수 없습니다.")
+        return
+
     with serial.Serial('/dev/ttyACM0', 9600, timeout=None) as seri:
         seri.reset_input_buffer()
 
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            print("카메라를 열 수 없습니다.")
-            return
-
-        lt, rt = False, False
         while True:
             try:
                 content = seri.readline().decode(errors='ignore').strip()
@@ -196,12 +253,11 @@ def running():
                             break
 
                         frame = cv2.resize(frame, (640, 480))
-                        follow_line_using_opencv(frame, lt, rt)
+                        follow_line_using_opencv(frame)
                         cv2.imshow("Lane Detection", frame)
 
                         if cv2.waitKey(1) & 0xFF == ord('q'):
                             break
-
             except Exception as e:
                 print(f"예외 발생: {e}")
 
