@@ -115,48 +115,6 @@ def calculate_center_line(left_line, right_line):
 
     return (x1_center, y1_center, x2_center, y2_center)
 
-def follow_line(center_x, frame_width, lt, rt):
-    """OpenCV에서 검출된 중심선을 기반으로 라인을 따라 움직이는 함수"""
-    if center_x is not None:
-        # 중심선이 화면 중앙에 가까우면 직진
-        if abs(center_x - frame_width // 2) < 20:
-            print("직진 중...")
-            pca.channels[1].duty_cycle = map_value(1400, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
-            pca.channels[0].duty_cycle = map_value(1390, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
-            lt = False
-            rt = True
-        # 중심선이 왼쪽에 치우쳐 있으면 왼쪽으로 회전
-        elif center_x < frame_width // 2:
-            print("왼쪽으로 조금 회전")
-            pca.channels[1].duty_cycle = map_value(1400, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
-            pca.channels[0].duty_cycle = map_value(1440, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
-            lt = True
-            rt = False
-        # 중심선이 오른쪽에 치우쳐 있으면 오른쪽으로 회전
-        else:
-            print("오른쪽으로 조금 회전")
-            pca.channels[1].duty_cycle = map_value(1400, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
-            pca.channels[0].duty_cycle = map_value(1520, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
-            lt = False
-            rt = True
-    else:
-        # 중심선을 찾지 못했을 때
-        print("라인을 찾지 못했습니다.")
-        if lt:
-            print("왼쪽으로 유지")
-            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
-            pca.channels[0].duty_cycle = map_value(1240, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
-        elif rt:
-            print("오른쪽으로 유지")
-            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
-            pca.channels[0].duty_cycle = map_value(1520, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
-        else:
-            print("정지 중...")
-            pca.channels[1].duty_cycle = map_value(1265, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
-            pca.channels[0].duty_cycle = map_value(1390, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
-
-    return lt, rt
-
 def follow_line_using_opencv(frame, lt, rt):
     """OpenCV를 이용해 라인을 따라 움직이는 함수"""
     height, width = frame.shape[:2]
@@ -182,13 +140,21 @@ def follow_line_using_opencv(frame, lt, rt):
             x1, y1, x2, y2 = center_line
             center_x = (x1 + x2) // 2
 
-    lt, rt = follow_line(center_x, width, lt, rt)
-
-    # 시각화
     if center_x is not None:
-        cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)  # 파란선
-        cv2.putText(frame, f"Center X: {center_x}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-    return lt, rt
+        # 중심선을 따라 조향
+        if abs(center_x - width // 2) < 20:
+            pca.channels[0].duty_cycle = map_value(1400, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
+            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
+        elif center_x < width // 2:
+            pca.channels[0].duty_cycle = map_value(1500, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
+            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
+        else:
+            pca.channels[0].duty_cycle = map_value(1300, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
+            pca.channels[1].duty_cycle = map_value(1300, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
+    else:
+        # 라인을 찾지 못했을 때
+        pca.channels[0].duty_cycle = map_value(1400, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
+        pca.channels[1].duty_cycle = map_value(1265, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
 
 def running():
     # 시리얼 포트 설정
@@ -230,7 +196,7 @@ def running():
                             break
 
                         frame = cv2.resize(frame, (640, 480))
-                        lt, rt = follow_line_using_opencv(frame, lt, rt)
+                        follow_line_using_opencv(frame, lt, rt)
                         cv2.imshow("Lane Detection", frame)
 
                         if cv2.waitKey(1) & 0xFF == ord('q'):
