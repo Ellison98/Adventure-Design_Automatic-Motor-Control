@@ -25,6 +25,10 @@ THROTTLE_MAX = 2100
 PREV_STEER = 1390  # 초기값 (중립 상태)
 MAX_STEERING_CHANGE = 100  # 허용하는 최대 조향 변화
 
+# 자동/수동 모드 기준값
+SWITCH_THRESHOLD = 1350
+
+
 def map_value(value, in_min, in_max, out_min, out_max):
     """값을 특정 범위에서 다른 범위로 매핑하는 함수"""
     return int((value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
@@ -197,34 +201,50 @@ def calculate_center_line(left_line, right_line):
     return (x1_center, y1_center, x2_center, y2_center)
 
 def running():
-    # OpenCV를 사용하여 카메라에서 실시간 프레임을 캡처
-    gst_pipeline = (
-        "nvarguscamerasrc sensor-id=0 ! "
-        "video/x-raw(memory:NVMM), width=1280, height=720, format=(string)NV12, framerate=30/1 ! "
-        "nvvidconv flip-method=0 ! "
-        "video/x-raw, format=(string)BGRx ! videoconvert ! video/x-raw, format=(string)BGR ! appsink"
-    )
-    cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
-    if not cap.isOpened():
-        print("Failed to read frame. Check the camera.")
-        return
+    # 시리얼 포트 설정 (아두이노에서 데이터 수신)
+    with serial.Serial('/dev/ttyACM0', 9600, timeout=None) as seri:
+        # 시리얼 버퍼 비우기
+        seri.reset_input_buffer()
+        lt, rt = False, False
+        while True:
+            try:
+                # 아두이노로부터 데이터 읽기
+                content = seri.readline().decode(errors='ignore').strip()
+                values = content.split(',')
 
-    lt, rt = False, False
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Failed to read frame. Check the camera.")
-            break
+                if len(values) < 3:
+                    print(f"잘못된 데이터 형식: {content}")
+                    continue
 
-        frame = cv2.resize(frame, (640, 480))
-        lt, rt = follow_line_using_opencv(frame, lt, rt)
-        cv2.imshow("Lane Detection", frame)
+                if all(value.isdigit() for value in values[:3]):
+                    steer_duration = int(values[0].strip())
+                    throttle_duration = int(values[1].strip())
+                    switch_bt_duration = int(values[2].strip())
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+                    # 모드 구분
+                    mode = "MANUAL" if switch_bt_duration >= SWITCH_THRESHOLD else "AUTO"
+                    print(f"모드: {mode} (스위치 값: {switch_bt_duration})")
 
-    cap.release()
-    cv2.destroyAllWindows()
+                    if mode == "MANUAL":
+                        if STEER_MIN <= steer_duration <= STEER_MAX and THROTTLE_MIN <= throttle_duration <= THROTTLE_MAX:
+                            pca.channels[0].duty_cycle = map_value(steer_duration, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
+                            pca.channels[1].duty_cycle = map_value(throttle_duration, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
+                        else:
+                            print(f"비정상적인 값 범위: {steer_duration}, {throttle_duration}")
+                    else:
+                        frame = np.zeros((480, 640, 3), dtype=np.uint8)  # 프레임 생성 (카메라 입력 대체)
+                        lt, rt = follow_line_using_opencv(frame, lt, rt)
+                        cv2.imshow("Lane Detection", frame)
+                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                            break
+
+                else:
+                    print(f"숫자가 아닌 값 수신됨: {content}")
+
+            except ValueError:
+                print(f"잘못된 신호: {content}")
+            except Exception as e:
+                print(f"예외 발생: {e}")
 
 if __name__ == "__main__":
     running()
