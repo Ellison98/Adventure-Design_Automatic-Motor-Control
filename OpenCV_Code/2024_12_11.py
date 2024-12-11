@@ -1,40 +1,28 @@
 import cv2
 import numpy as np
 import serial
-from adafruit_pca9685 import PCA9685
-from board import SCL, SDA
 import busio
+from board import SCL, SDA
+from adafruit_pca9685 import PCA9685
 
-# I2C 및 PCA9685 설정
+# PCA9685 설정
 i2c_bus = busio.I2C(SCL, SDA)
 pca = PCA9685(i2c_bus)
 pca.frequency = 60
 
-# 듀티 사이클 범위 (0~65535: 16비트 범위)
+# 듀티 사이클 범위
 PWM_MIN = 1500
 PWM_MAX = 12000
 
-# 스티어링과 쓰로틀의 입력 범위
+# 수동 모드 입력 범위
 STEER_MIN = 800
 STEER_MAX = 2100
 THROTTLE_MIN = 800
 THROTTLE_MAX = 2100
 
-# 자동/수동 모드 기준값
-SWITCH_THRESHOLD = 1350
+SWITCH_THRESHOLD = 1350  # 자동/수동 전환 기준값
 
-# 값 매핑 함수
-def map_value(value, in_min, in_max, out_min, out_max):
-    return int((value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
-
-# PWM 설정 함수
-def set_motor_pwm(steer_value, throttle_value):
-    steer_pwm = map_value(steer_value, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
-    throttle_pwm = map_value(throttle_value, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
-    pca.channels[0].duty_cycle = steer_pwm
-    pca.channels[1].duty_cycle = throttle_pwm
-
-# OpenCV 함수들
+# OpenCV 관련 함수
 def grayscale(frame):
     return cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 
@@ -53,97 +41,95 @@ def hough_lines(frame, rho, theta, threshold, min_line_len, max_line_gap):
     lines = cv2.HoughLinesP(frame, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
     return lines
 
-def calculate_center_line(lines):
-    if lines is None:
+def calculate_center_line(left_line, right_line):
+    if left_line is None or right_line is None:
         return None
-    left_lines, right_lines = [], []
-    for line in lines:
-        for x1, y1, x2, y2 in line:
-            slope = (y2 - y1) / (x2 - x1) if x2 != x1 else None
-            if slope is None or abs(slope) < 0.5:
-                continue
-            if slope < 0:
-                left_lines.append(line)
-            else:
-                right_lines.append(line)
-    return (np.mean(left_lines, axis=0) if left_lines else None, 
-            np.mean(right_lines, axis=0) if right_lines else None)
+    x1_left, y1_left, x2_left, y2_left = left_line
+    x1_right, y1_right, x2_right, y2_right = right_line
 
-def draw_lines(frame, lines):
-    if lines is not None:
-        for line in lines:
-            x1, y1, x2, y2 = map(int, line)
-            cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    x1_center = (x1_left + x1_right) // 2
+    y1_center = (y1_left + y1_right) // 2
+    x2_center = (x2_left + x2_right) // 2
+    y2_center = (y2_left + y2_right) // 2
+    return (x1_center, y1_center, x2_center, y2_center)
 
-def follow_line(frame):
-    gray = grayscale(frame)
-    blur = gaussian_blur(gray, 5)
-    edges = canny(blur, 50, 150)
+# PWM 제어 함수
+def map_value(value, in_min, in_max, out_min, out_max):
+    return int((value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
 
-    height, width = edges.shape
-    roi_vertices = np.array([[
-        (0, height),
-        (width / 2 - 50, height / 2 + 50),
-        (width / 2 + 50, height / 2 + 50),
-        (width, height)
-    ]], dtype=np.int32)
+def set_motor_pwm(steer_value, throttle_value):
+    steer_pwm = map_value(steer_value, STEER_MIN, STEER_MAX, PWM_MIN, PWM_MAX)
+    throttle_pwm = map_value(throttle_value, THROTTLE_MIN, THROTTLE_MAX, PWM_MIN, PWM_MAX)
+    pca.channels[0].duty_cycle = steer_pwm
+    pca.channels[1].duty_cycle = throttle_pwm
 
-    roi = region_of_interest(edges, roi_vertices)
-    lines = hough_lines(roi, 1, np.pi / 180, 20, 15, 10)
-    center_lines = calculate_center_line(lines)
-    draw_lines(frame, center_lines)
-    return frame
-
-# 메인 루프
+# 메인 실행 함수
 def main():
-    gst_pipeline = (
-        "nvarguscamerasrc sensor-id=0 ! "
-        "video/x-raw(memory:NVMM), width=1280, height=720, format=(string)NV12, framerate=30/1 ! "
-        "nvvidconv flip-method=0 ! "
-        "video/x-raw, format=(string)BGRx ! videoconvert ! video/x-raw, format=(string)BGR ! appsink"
-    )
-    cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
-
+    cap = cv2.VideoCapture(0)
     if not cap.isOpened():
-        print("Failed to read frame. Check the camera.")
+        print("카메라를 열 수 없습니다.")
         return
 
-    with serial.Serial('/dev/ttyACM0', 9600, timeout=None) as seri:
-        seri.reset_input_buffer()
+    seri = serial.Serial('/dev/ttyACM0', 9600, timeout=None)
+    seri.reset_input_buffer()
 
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("Failed to read frame. Check the camera.")
-                break
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("카메라 프레임을 읽을 수 없습니다.")
+            break
 
-            try:
-                # 아두이노 데이터 수신
-                content = seri.readline().decode(errors='ignore').strip()
-                values = content.split(',')
+        frame = cv2.resize(frame, (640, 480))
+        height, width = frame.shape[:2]
 
-                if len(values) < 3:
-                    print("Invalid data format:", content)
-                    continue
+        gray = grayscale(frame)
+        blur = gaussian_blur(gray, 5)
+        edges = canny(blur, 50, 150)
 
-                steer_duration, throttle_duration, switch_bt_duration = map(int, values[:3])
+        vertices = np.array([[
+            (0, height),
+            (width * 0.1, height * 0.6),
+            (width * 0.9, height * 0.6),
+            (width, height)
+        ]], dtype=np.int32)
+        roi = region_of_interest(edges, vertices)
+        lines = hough_lines(roi, 1, np.pi / 180, 30, 20, 200)
+
+        mode = "AUTO"
+        try:
+            content = seri.readline().decode(errors='ignore').strip()
+            values = content.split(',')
+            if len(values) >= 3:
+                switch_bt_duration = int(values[2].strip())
                 mode = "MANUAL" if switch_bt_duration >= SWITCH_THRESHOLD else "AUTO"
-                print(f"Mode: {mode}")
 
-                if mode == "MANUAL":
-                    set_motor_pwm(steer_duration, throttle_duration)
-                else:
-                    processed_frame = follow_line(frame)
-                    cv2.imshow("Lane Tracking", processed_frame)
+        except Exception as e:
+            print(f"시리얼 데이터 읽기 오류: {e}")
 
-            except Exception as e:
-                print("Error:", e)
+        if mode == "AUTO":
+            if lines is not None:
+                # 라인 처리 및 중앙 라인 계산
+                left_line, right_line = filter_and_average_line(lines, width, height)
+                center_line = calculate_center_line(left_line, right_line)
+                if center_line is not None:
+                    x1, y1, x2, y2 = center_line
+                    steer = (x1 + x2) // 2
+                    throttle = height - y1
+                    set_motor_pwm(steer, throttle)
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+        else:
+            if len(values) >= 2:
+                steer_value = int(values[0].strip())
+                throttle_value = int(values[1].strip())
+                set_motor_pwm(steer_value, throttle_value)
+
+        cv2.imshow("Lane Detection", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
     cap.release()
     cv2.destroyAllWindows()
+    seri.close()
 
 if __name__ == "__main__":
     main()
