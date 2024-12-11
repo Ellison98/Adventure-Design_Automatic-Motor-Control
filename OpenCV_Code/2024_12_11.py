@@ -28,7 +28,6 @@ MAX_STEERING_CHANGE = 100  # 허용하는 최대 조향 변화
 # 자동/수동 모드 기준값
 SWITCH_THRESHOLD = 1350
 
-
 def map_value(value, in_min, in_max, out_min, out_max):
     """값을 특정 범위에서 다른 범위로 매핑하는 함수"""
     return int((value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min)
@@ -101,10 +100,10 @@ def follow_line_using_opencv(frame, lt, rt):
     blur_img = gaussian_blur(gray_img, 3)
     canny_img = canny(blur_img, 50, 150)
     vertices = np.array([[
-        (width * 0.1, height),
-        (width * 0.45, height * 0.6),
-        (width * 0.55, height * 0.6),
-        (width * 0.9, height)
+        (0, height),
+        (width * 0.1, height * 0.6),
+        (width * 0.9, height * 0.6),
+        (width, height)
     ]], dtype=np.int32)
     ROI_img = region_of_interest(canny_img, vertices)
     lines = cv2.HoughLinesP(ROI_img, 1, np.pi / 180, threshold=30, minLineLength=20, maxLineGap=2)
@@ -233,11 +232,16 @@ def running():
                             print(f"비정상적인 값 범위: {steer_duration}, {throttle_duration}")
                     else:
                         frame = np.zeros((480, 640, 3), dtype=np.uint8)  # 프레임 생성 (카메라 입력 대체)
+                        ret, frame = cap.read()
+                        if not ret:
+                            print("프레임을 읽을 수 없습니다.")
+                            break
+                        frame = cv2.resize(frame, (640, 480))
                         lt, rt = follow_line_using_opencv(frame, lt, rt)
                         cv2.imshow("Lane Detection", frame)
-                        if cv2.waitKey(1) & 0xFF == ord('q'):
-                            break
 
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
                 else:
                     print(f"숫자가 아닌 값 수신됨: {content}")
 
@@ -246,6 +250,7 @@ def running():
             except Exception as e:
                 print(f"예외 발생: {e}")
 
+        cap.release()
         cv2.destroyAllWindows()
 
 if __name__ == "__main__":
