@@ -246,5 +246,7 @@ def running():
             except Exception as e:
                 print(f"예외 발생: {e}")
 
+        cv2.destroyAllWindows()
+
 if __name__ == "__main__":
     running()
