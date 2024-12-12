@@ -1,0 +1,64 @@
+#include <Servo.h>
+
+// 서보 핀 정의
+#define STEER_PIN 7      // 스티어링 서보 핀
+#define THROTTLE_PIN 8   // 쓰로틀 서보 핀
+
+Servo steerServo;
+Servo throttleServo;
+
+// 조종기 입력 핀 정의
+#define STEER_INPUT_PIN A1
+#define THROTTLE_INPUT_PIN A2
+
+unsigned long steer_duration;
+unsigned long throttle_duration;
+
+void setup() {
+  Serial.begin(9600);
+  
+  // 서보 초기화
+  steerServo.attach(STEER_PIN);
+  throttleServo.attach(THROTTLE_PIN);
+  steerServo.writeMicroseconds(1500);    // 중립 위치
+  throttleServo.writeMicroseconds(1500); // 정지
+  
+  // 조종기 입력 핀 설정
+  pinMode(STEER_INPUT_PIN, INPUT);
+  pinMode(THROTTLE_INPUT_PIN, INPUT);
+}
+
+void loop() {
+  // 조종기로부터 스티어링과 쓰로틀의 HIGH 신호 지속 시간 측정
+  steer_duration = pulseIn(STEER_INPUT_PIN, HIGH, 90000);
+  throttle_duration = pulseIn(THROTTLE_INPUT_PIN, HIGH, 90000);
+  
+  // 조종기 데이터를 젯슨 나노로 전송 (예: steer_duration, throttle_duration)
+  Serial.print(steer_duration);
+  Serial.print(',');
+  Serial.print(throttle_duration);
+  Serial.print('\n');
+  
+  // 젯슨 나노로부터 제어 신호 수신 (예: steer_control, throttle_control)
+  if (Serial.available() >= 4) { // steer_control과 throttle_control이 2바이트씩 전송된다고 가정
+    byte steer_control_high = Serial.read();
+    byte steer_control_low = Serial.read();
+    byte throttle_control_high = Serial.read();
+    byte throttle_control_low = Serial.read();
+    
+    int steer_control = (steer_control_high << 8) | steer_control_low;
+    int throttle_control = (throttle_control_high << 8) | throttle_control_low;
+    
+    // 서보에 PWM 신호 적용
+    steerServo.writeMicroseconds(steer_control);
+    throttleServo.writeMicroseconds(throttle_control);
+    
+    // 디버깅용 시리얼 출력
+    Serial.print("Steer Control: ");
+    Serial.print(steer_control);
+    Serial.print(", Throttle Control: ");
+    Serial.println(throttle_control);
+  }
+  
+  delay(100); // 100ms 지연
+}
